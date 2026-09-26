@@ -27,7 +27,7 @@ RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
 SOCKET_PATH = os.path.join(RUNTIME_DIR, "jarvis", "ipc.sock")
 
 
-def send_ipc(action: str, params: Optional[Dict[str, Any]] = None, timeout: float = 8.0) -> Optional[dict]:
+def send_ipc(action: str, params: Optional[Dict[str, Any]] = None, timeout: float = 10.0) -> Optional[dict]:
     """Send JSON-RPC request to the running Jarvis daemon."""
     if not os.path.exists(SOCKET_PATH):
         return None
@@ -132,7 +132,7 @@ def cmd_exec(args: list[str]):
         print("Usage: omarchy-jarvis exec <command text>")
         sys.exit(1)
 
-    resp = send_ipc("execute_text", {"text": text}, timeout=3.0)
+    resp = send_ipc("execute_text", {"text": text}, timeout=10.0)
     if resp and resp.get("status") == "ok":
         res = resp.get("result", {})
         print(f"⚡ Executed: \"{text}\"")
@@ -141,12 +141,20 @@ def cmd_exec(args: list[str]):
         print(f"   Success: {res.get('success')} ({res.get('latency_ms', 0)}ms)")
         return
 
-    dispatcher = CommandDispatcher()
+    from core.system2_agent import System2Agent
+    agent = System2Agent()
+    dispatcher = CommandDispatcher(system2=agent)
     res = dispatcher.dispatch_text(text)
     print(f"⚡ In-Process Executed: \"{text}\"")
     print(f"   Intent: {res.get('intent')}")
     print(f"   Action: {res.get('action')}")
+    if res.get("response"):
+        print(f"   Response: \"{res.get('response')}\"")
     print(f"   Success: {res.get('success')} ({res.get('latency_ms', 0)}ms)")
+
+    # Join playback thread before CLI process exits to prevent shutdown race
+    if agent.tts:
+        agent.tts.wait_for_playback()
 
 
 def cmd_classify(args: list[str]):
@@ -156,23 +164,111 @@ def cmd_classify(args: list[str]):
         print("Usage: omarchy-jarvis classify <text>")
         sys.exit(1)
 
+    # 1. Fast-path: query warm resident daemon over Unix socket (<30ms total)
+    resp = send_ipc("classify", {"text": text}, timeout=2.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        _print_classification(text, res, source="Daemon (Warm Memory)")
+        return
+
+    # 2. Standalone fallback (if daemon is not running)
     engine = LayaDecisionEngine()
     if not engine.is_ready:
         print("[-] Laya decision model is not yet trained/exported. Run: omarchy-jarvis train")
         sys.exit(1)
 
     res = engine.predict(text)
-    print(f"🧠 Laya Decision Model:")
+    _print_classification(text, res, source="In-Process (Cold Start)")
+
+
+def _print_classification(text: str, res: dict, source: str = ""):
+    print(f"🧠 Laya Decision Model [{source}]:")
     print(f"   Input:      \"{text}\"")
-    print(f"   Intent:     {res['intent']}")
-    print(f"   Confidence: {res['confidence'] * 100:.2f}% (T={res['temperature']})")
-    print(f"   Confident:  {res['confident']} (Threshold: {res['threshold'] * 100:.0f}%)")
-    print(f"   Latency:    {res['latency_ms']} ms")
-    print(f"   Distribution:")
-    sorted_dist = sorted(res["distribution"].items(), key=lambda x: x[1], reverse=True)
-    for intent, p in sorted_dist[:4]:
-        bar = "█" * int(p * 20)
-        print(f"     - {intent:<20} {p * 100:5.1f}% |{bar}")
+    print(f"   Intent:     {res.get('intent')}")
+    print(f"   Confidence: {res.get('confidence', 0.0) * 100:.2f}% (T={res.get('temperature', 1.0)})")
+    print(f"   Confident:  {res.get('confident', False)} (Threshold: {res.get('threshold', 0.85) * 100:.0f}%)")
+    print(f"   Latency:    {res.get('latency_ms', 0)} ms")
+    dist = res.get("distribution", {})
+    if dist:
+        print(f"   Distribution:")
+        sorted_dist = sorted(dist.items(), key=lambda x: x[1], reverse=True)
+        for intent, p in sorted_dist[:4]:
+            bar = "█" * int(p * 20)
+            print(f"     - {intent:<20} {p * 100:5.1f}% |{bar}")
+
+
+def cmd_ask(args: list[str]):
+    """Send complex or generative question to System 2 Agent with spoken reply."""
+    text = " ".join(args).strip()
+    if not text:
+        print("Usage: omarchy-jarvis ask <prompt...>")
+        sys.exit(1)
+
+    ensure_daemon()
+    print(f"🤔 Jarvis deliberating: \"{text}\"...")
+    resp = send_ipc("agent_prompt", {"text": text, "speak": True}, timeout=25.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+        print(f"   \"{res.get('response')}\"")
+        if res.get("requires_clarification"):
+            print("   [Requires verbal clarification - listening...]")
+        return
+
+    # In-process fallback
+    from core.system2_agent import System2Agent
+    agent = System2Agent()
+    res = agent.query(text, speak=True, block_speech=True)
+    print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+    print(f"   \"{res.get('response')}\"")
+    if agent.tts:
+        agent.tts.wait_for_playback()
+
+
+def cmd_speak(args: list[str]):
+    """Synthesize and play speech via Kokoro-82M neural TTS."""
+    if not args:
+        print("Usage: omarchy-jarvis speak [--voice <id>] <text...>")
+        sys.exit(1)
+
+    voice = None
+    if len(args) >= 3 and args[0] in ("--voice", "-v"):
+        voice = args[1]
+        text = " ".join(args[2:]).strip()
+    else:
+        text = " ".join(args).strip()
+
+    resp = send_ipc("speak", {"text": text, "voice": voice, "block": True}, timeout=15.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        print(f"🗣️ Jarvis spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
+        return
+
+    from core.tts_kokoro import KokoroTTS
+    tts = KokoroTTS()
+    res = tts.speak(text, voice=voice, block=True)
+    print(f"🗣️ Jarvis spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
+
+
+def cmd_voices():
+    """List available Kokoro neural voices."""
+    resp = send_ipc("list_voices", timeout=2.0)
+    data = resp.get("result", {}) if resp else None
+
+    if not data:
+        from core.tts_kokoro import KokoroTTS
+        tts = KokoroTTS(lazy_init=True)
+        data = tts.list_voices()
+
+    default_v = data.get("default", "bm_george")
+    voices = data.get("voices", {})
+
+    print("🎙️ Kokoro-82M Neural Voices:")
+    print(f"{'ID':<14} {'Name':<12} {'Accent':<12} {'Gender':<8} {'Default'}")
+    print("-" * 55)
+    for vid, meta in voices.items():
+        is_def = "★ (Current)" if vid == default_v else ""
+        print(f"{vid:<14} {meta['name']:<12} {meta['accent']:<12} {meta['gender']:<8} {is_def}")
 
 
 def cmd_status():
@@ -220,6 +316,9 @@ Usage:
   omarchy-jarvis record-start          Start voice capture (push-to-talk press)
   omarchy-jarvis record-stop           Stop voice capture & execute (push-to-talk release)
   omarchy-jarvis exec <command...>     Directly execute command text
+  omarchy-jarvis ask <prompt...>       Deliberative System 2 reasoning with spoken reply
+  omarchy-jarvis speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
+  omarchy-jarvis voices                List available Kokoro voices
   omarchy-jarvis classify <text...>    Evaluate Laya decision model & calibrated confidence
   omarchy-jarvis status                Show daemon status
 
@@ -245,6 +344,12 @@ def main():
         cmd_record_stop()
     elif cmd in ("exec", "run"):
         cmd_exec(sys.argv[2:])
+    elif cmd in ("ask", "agent", "query"):
+        cmd_ask(sys.argv[2:])
+    elif cmd == "speak":
+        cmd_speak(sys.argv[2:])
+    elif cmd == "voices":
+        cmd_voices()
     elif cmd == "classify":
         cmd_classify(sys.argv[2:])
     elif cmd == "generate":

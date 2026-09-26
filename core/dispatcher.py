@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from core.dbus_mpris import DbusMediaControl
 from core.hyprland_ipc import HyprlandIPC
 from core.system1_laya import LayaDecisionEngine
+from core.system2_agent import System2Agent
 
 # Word to digit mapping for natural speech recognition
 NUM_WORDS = {
@@ -47,10 +48,12 @@ class CommandDispatcher:
         hypr: Optional[HyprlandIPC] = None,
         media: Optional[DbusMediaControl] = None,
         laya: Optional[LayaDecisionEngine] = None,
+        system2: Optional[System2Agent] = None,
     ):
         self.hypr = hypr or HyprlandIPC()
         self.media = media or DbusMediaControl()
         self.laya = laya or LayaDecisionEngine()
+        self.system2 = system2
 
     def dispatch_text(self, raw_text: str) -> Dict[str, Any]:
         """Parse raw speech transcription and execute matching reflex command."""
@@ -74,12 +77,24 @@ class CommandDispatcher:
 
         # Check for deliberate generative escalation
         if laya_eval.get("available") and laya_eval.get("intent") == "ESCALATE_GENERATIVE" and laya_eval.get("confident"):
-            result.update(
-                matched=True,
-                intent="ESCALATE_GENERATIVE",
-                action="escalate_to_system2",
-                success=True,
-            )
+            if self.system2:
+                agent_res = self.system2.query(raw_text, speak=True)
+                result.update(
+                    matched=True,
+                    intent="ESCALATE_GENERATIVE",
+                    action="system2_agent_query",
+                    success=agent_res.get("status") == "ok",
+                    response=agent_res.get("response"),
+                    requires_clarification=agent_res.get("requires_clarification", False),
+                    agent_result=agent_res,
+                )
+            else:
+                result.update(
+                    matched=True,
+                    intent="ESCALATE_GENERATIVE",
+                    action="escalate_to_system2",
+                    success=True,
+                )
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -470,7 +485,19 @@ class CommandDispatcher:
             )
             return result
 
-        # 6. Fallback: Unmatched intent (Ready for System 2 Escalation in Phase 3)
+        # 6. Fallback: Unmatched intent -> escalate to System 2 Agent if configured
+        if self.system2:
+            agent_res = self.system2.query(raw_text, speak=True)
+            result.update(
+                matched=True,
+                intent="ESCALATE_GENERATIVE",
+                action="system2_agent_query",
+                success=agent_res.get("status") == "ok",
+                response=agent_res.get("response"),
+                requires_clarification=agent_res.get("requires_clarification", False),
+                agent_result=agent_res,
+            )
+
         result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
         return result
 

@@ -10,6 +10,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 from core.dispatcher import CommandDispatcher
+from core.system2_agent import System2Agent
+from core.tts_kokoro import AVAILABLE_VOICES, KokoroTTS
 from core.voxtype_bridge import VoxtypeBridge
 
 
@@ -26,7 +28,9 @@ class JarvisDaemon:
         self.socket_path = socket_path or os.path.join(
             self.jarvis_dir, "ipc.sock"
         )
-        self.dispatcher = CommandDispatcher()
+        self.tts = KokoroTTS(lazy_init=True)
+        self.system2 = System2Agent(tts=self.tts, enable_tts=True)
+        self.dispatcher = CommandDispatcher(system2=self.system2)
         self.voxtype = VoxtypeBridge()
 
         self.state = "idle"
@@ -81,6 +85,46 @@ class JarvisDaemon:
             self.set_state("idle")
             return {"status": "ok", "result": res}
 
+        elif action == "classify":
+            text = req.get("text", "").strip()
+            if not text:
+                return {"status": "error", "error": "Empty text provided"}
+            res = self.dispatcher.laya.predict(text)
+            return {"status": "ok", "result": res}
+
+        elif action == "agent_prompt":
+            text = req.get("text", "").strip()
+            speak = req.get("speak", True)
+            if not text:
+                return {"status": "error", "error": "Empty prompt provided"}
+            self.set_state("deliberating")
+            res = self.system2.query(text, speak=speak)
+            self.set_state("idle")
+            return {"status": "ok", "result": res}
+
+        elif action == "speak":
+            text = req.get("text", "").strip()
+            voice = req.get("voice")
+            speed = float(req.get("speed", 1.0))
+            block = req.get("block", False)
+            if not text:
+                return {"status": "error", "error": "Empty text provided"}
+            res = self.tts.speak(text, voice=voice, speed=speed, block=block)
+            return {"status": "ok", "result": res}
+
+        elif action == "list_voices":
+            return {"status": "ok", "result": self.tts.list_voices()}
+
+        elif action == "set_voice":
+            voice = req.get("voice", "").strip()
+            if voice in AVAILABLE_VOICES:
+                self.tts.default_voice = voice
+                return {"status": "ok", "default_voice": voice}
+            return {
+                "status": "error",
+                "error": f"Unknown voice: {voice}. Choose from: {list(AVAILABLE_VOICES.keys())}",
+            }
+
         elif action == "record_start":
             ok = self.voxtype.start_recording()
             if ok:
@@ -123,8 +167,20 @@ class JarvisDaemon:
         self.last_command = text
         res = self.dispatcher.dispatch_text(text)
         self.last_result = res
-        self.set_state("idle")
 
+        # If System 2 requires clarification, transition to clarifying and rearm Voxtype
+        if res.get("requires_clarification"):
+            self.set_state("clarifying")
+            self.voxtype.start_recording()
+            return {
+                "status": "ok",
+                "state": "clarifying",
+                "transcription": text,
+                "result": res,
+                "clarification_prompt": res.get("response"),
+            }
+
+        self.set_state("idle")
         return {
             "status": "ok",
             "state": "idle",
