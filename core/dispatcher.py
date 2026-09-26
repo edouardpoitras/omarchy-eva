@@ -100,7 +100,7 @@ class CommandDispatcher:
         self.system = system or SystemControl()
         self.visual = visual or VisualGrounding()
 
-    def dispatch_text(self, raw_text: str) -> Dict[str, Any]:
+    def dispatch_text(self, raw_text: str, execute: bool = True) -> Dict[str, Any]:
         """Parse raw speech transcription and execute matching reflex command (or compound sequence)."""
         t_start = time.perf_counter()
 
@@ -117,6 +117,18 @@ class CommandDispatcher:
                 dry_results.append(res_dry)
 
             if can_all_reflex:
+                if not execute:
+                    actions = [r.get("action", "") for r in dry_results if r.get("action")]
+                    return {
+                        "input": raw_text,
+                        "normalized": normalize_numbers(raw_text.strip().lower()),
+                        "matched": True,
+                        "intent": "COMPOUND_REFLEX",
+                        "action": " -> ".join(actions),
+                        "success": True,
+                        "sub_results": dry_results,
+                    }
+
                 sub_results = []
                 for part in parts:
                     sub_res = self._dispatch_single(part, execute=True)
@@ -143,6 +155,15 @@ class CommandDispatcher:
                     "laya": {"available": True, "intent": "COMPOUND_REFLEX", "confidence": 1.0, "confident": True},
                 }
             elif self.system2:
+                if not execute:
+                    return {
+                        "input": raw_text,
+                        "normalized": normalize_numbers(raw_text.strip().lower()),
+                        "matched": True,
+                        "intent": "ESCALATE_GENERATIVE",
+                        "action": "system2_agent_query",
+                        "success": True,
+                    }
                 agent_res = self.system2.query(raw_text, speak=True)
                 return {
                     "input": raw_text,
@@ -159,7 +180,9 @@ class CommandDispatcher:
                 }
 
         # Otherwise execute single command directly
-        return self._dispatch_single(raw_text, execute=True)
+        return self._dispatch_single(raw_text, execute=execute)
+
+    dispatch = dispatch_text
 
     def _dispatch_single(self, raw_text: str, execute: bool = True) -> Dict[str, Any]:
         """Evaluate and optionally execute a single atomic voice command."""
@@ -729,7 +752,7 @@ class CommandDispatcher:
             return result
 
         # ------------------------------------------------------------- 10. Media & Audio Controls
-        if any(phrase in text for phrase in ["pause music", "pause song", "pause audio", "pause video", "pause playback", "pause"]):
+        if any(phrase in text for phrase in ["pause music", "pause the music", "pause song", "pause audio", "pause video", "pause playback", "hold playback", "stop playback"]) or re.search(r"\bpause\b", text):
             if not execute:
                 result.update(matched=True, intent="MEDIA_CONTROL", action="pause", success=True)
                 return result
@@ -738,7 +761,7 @@ class CommandDispatcher:
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
-        if any(phrase in text for phrase in ["play music", "play song", "resume music", "resume video", "resume playback", "play", "unpause"]):
+        if any(phrase in text for phrase in ["play music", "play song", "resume music", "resume video", "resume playback", "unpause"]) or (re.search(r"\b(?:play|resume)\b", text) and "display" not in text and "gameplay" not in text):
             if not execute:
                 result.update(matched=True, intent="MEDIA_CONTROL", action="play", success=True)
                 return result
@@ -849,8 +872,136 @@ class CommandDispatcher:
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
+        # ------------------------------------------------------------- 10b. Audio Device & Microphone Routing
+        # Switch Audio Output Device
+        # e.g., "switch audio output device to headset", "switch audio output to speakers", "change audio to headphones", "switch output to kraken"
+        m_audio_out = re.search(
+            r"\b(?:switch|change|set)\s+(?:the\s+)?(?:audio\s+output|sound\s+output|playback\s+device|output\s+device|audio\s+device|output)\s+(?:device\s+)?to\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+)\b",
+            raw_text,
+            re.IGNORECASE,
+        )
+        if not m_audio_out:
+            m_audio_out_alt = re.search(
+                r"\b(?:switch|change)\s+to\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)\s+(?:audio|speakers|headphones|headset|sound)\b",
+                raw_text,
+                re.IGNORECASE,
+            )
+            if m_audio_out_alt and not any(kw in m_audio_out_alt.group(1).lower() for kw in ("workspace", "desktop", "tab", "window")):
+                m_audio_out = m_audio_out_alt
+
+        if m_audio_out:
+            target_dev = m_audio_out.group(1).strip()
+            if not execute:
+                result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_output {target_dev}", success=True)
+                return result
+            res = self.system.switch_audio_output(target_dev)
+            result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_output {target_dev}", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # Switch Audio Input / Microphone
+        # e.g., "switch microphone to headset", "switch mic to webcam", "change audio input to usb mic", "set microphone to vitade"
+        m_audio_in = re.search(
+            r"\b(?:switch|change|set)\s+(?:the\s+)?(?:microphone|mic|audio\s+input|input\s+device|input)\s+(?:device\s+)?to\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+)\b",
+            raw_text,
+            re.IGNORECASE,
+        )
+        if not m_audio_in:
+            m_audio_in_alt = re.search(
+                r"\b(?:switch|change)\s+to\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)\s+(?:mic|microphone|input)\b",
+                raw_text,
+                re.IGNORECASE,
+            )
+            if m_audio_in_alt and not any(kw in m_audio_in_alt.group(1).lower() for kw in ("workspace", "desktop", "tab", "window")):
+                m_audio_in = m_audio_in_alt
+
+        if m_audio_in:
+            target_mic = m_audio_in.group(1).strip()
+            if not execute:
+                result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_input {target_mic}", success=True)
+                return result
+            res = self.system.switch_audio_input(target_mic)
+            result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_input {target_mic}", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # Enumerate Audio Devices / Mics
+        if any(phrase in text for phrase in ["list audio devices", "list sound devices", "list audio outputs", "what audio devices", "audio devices"]):
+            if not execute:
+                result.update(matched=True, intent="AUDIO_CONTROL", action="list_audio_devices", success=True)
+                return result
+            res = self.system.list_audio_devices_speech("all")
+            result.update(matched=True, intent="AUDIO_CONTROL", action="list_audio_devices", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["list microphones", "list mics", "list audio inputs", "what microphones", "available microphones"]):
+            if not execute:
+                result.update(matched=True, intent="AUDIO_CONTROL", action="list_microphones", success=True)
+                return result
+            res = self.system.list_audio_devices_speech("input")
+            result.update(matched=True, intent="AUDIO_CONTROL", action="list_microphones", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
         # ------------------------------------------------------------- 11. Hardware & Connectivity Controls
         # WiFi
+        m_wifi_conn = re.search(r"\bconnect\s+(?:to\s+)?(?:wi-fi|wifi)\s+([a-zA-Z0-9_\-\.\s]+)\b", raw_text, re.IGNORECASE)
+        if not m_wifi_conn:
+            m_wifi_conn = re.search(r"\bconnect\s+to\s+([a-zA-Z0-9_\-\.\s]+?)\s+(?:wi-fi|wifi)\b", raw_text, re.IGNORECASE)
+        if m_wifi_conn:
+            target_ssid = m_wifi_conn.group(1).strip()
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action=f"wifi_connect {target_ssid}", success=True)
+                return result
+            res = self.system.connect_wifi(target_ssid)
+            result.update(matched=True, intent="DEVICE_CONTROL", action=f"wifi_connect {target_ssid}", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["disconnect wifi", "disconnect from wifi", "disconnect wi-fi", "disconnect from wi-fi"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_disconnect", success=True)
+                return result
+            res = self.system.disconnect_wifi()
+            result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_disconnect", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["list wifi networks", "list wifi", "show wifi networks", "scan wifi", "available wifi", "what wifi networks are available", "what wifi networks"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_list", success=True)
+                return result
+            res = self.system.list_wifi_networks(rescan="scan" in text)
+            result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_list", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["wifi status", "wi-fi status", "what wifi am i connected to", "current wifi"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_status", success=True)
+                return result
+            res = self.system.get_wifi_status()
+            result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_status", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
         if any(phrase in text for phrase in ["turn on wifi", "enable wifi", "wifi on", "turn on wi-fi", "enable wi-fi"]):
             if not execute:
                 result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_on", success=True)
@@ -885,6 +1036,43 @@ class CommandDispatcher:
             return result
 
         # Bluetooth
+        m_bt_conn = re.search(r"\bconnect\s+(?:to\s+)?bluetooth\s+([a-zA-Z0-9_\-\.\s]+)\b", raw_text, re.IGNORECASE)
+        if m_bt_conn:
+            target_bt = m_bt_conn.group(1).strip()
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action=f"bluetooth_connect {target_bt}", success=True)
+                return result
+            res = self.system.connect_bluetooth(target_bt)
+            result.update(matched=True, intent="DEVICE_CONTROL", action=f"bluetooth_connect {target_bt}", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["disconnect bluetooth", "disconnect from bluetooth"]):
+            m_bt_disc = re.search(r"\bdisconnect\s+(?:from\s+)?bluetooth\s*(.*)$", text)
+            target_bt = m_bt_disc.group(1).strip() if m_bt_disc and m_bt_disc.group(1).strip() else None
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_disconnect", success=True)
+                return result
+            res = self.system.disconnect_bluetooth(target_bt)
+            result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_disconnect", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["list bluetooth devices", "list bluetooth", "show bluetooth devices", "paired bluetooth devices", "available bluetooth devices"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_list", success=True)
+                return result
+            res = self.system.list_bluetooth_devices()
+            result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_list", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
         if any(phrase in text for phrase in ["turn on bluetooth", "enable bluetooth", "bluetooth on"]):
             if not execute:
                 result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_on", success=True)
@@ -960,6 +1148,81 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_bar()
             result.update(matched=True, intent="DEVICE_CONTROL", action="toggle_bar", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # Brightness Controls
+        m_bright_set = re.search(r"\b(?:set\s+)?brightness\s+(?:to\s+)?(\d+)\s*(?:percent|%)?\b", text)
+        if not m_bright_set:
+            m_bright_set = re.search(r"\bset\s+(?:the\s+)?(?:screen|display)\s+brightness\s+(?:to\s+)?(\d+)\s*(?:percent|%)?\b", text)
+        if m_bright_set:
+            val = int(m_bright_set.group(1))
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action=f"brightness_set {val}%", success=True)
+                return result
+            res = self.system.set_brightness(val)
+            result.update(matched=True, intent="DEVICE_CONTROL", action=f"brightness_set {val}%", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["brightness up", "increase brightness", "make screen brighter", "brighter screen", "more brightness"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_up", success=True)
+                return result
+            res = self.system.adjust_brightness(10)
+            result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_up", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["brightness down", "decrease brightness", "dim screen", "dim display", "less brightness", "lower brightness"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_down", success=True)
+                return result
+            res = self.system.adjust_brightness(-10)
+            result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_down", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if any(phrase in text for phrase in ["what is the brightness", "current brightness", "screen brightness"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_get", success=True)
+                return result
+            res = self.system.get_brightness()
+            result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_get", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # Display / Monitor Inspection & Scaling
+        if any(phrase in text for phrase in ["list displays", "list monitors", "what displays are connected", "show monitors", "display settings", "monitor settings"]):
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action="list_displays", success=True)
+                return result
+            res = self.system.list_displays()
+            result.update(matched=True, intent="DEVICE_CONTROL", action="list_displays", success=res.get("success", False), speech=res.get("speech"))
+            if res.get("speech") and self.system2 and self.system2.tts:
+                self.system2.tts.speak(res["speech"], block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        m_scale = re.search(r"\bset\s+(?:display\s+)?scale\s+(?:on\s+([a-zA-Z0-9_\-]+)\s+)?to\s+([0-9\.]+)\b", text)
+        if m_scale:
+            mon_target = m_scale.group(1) or "DP-2"
+            scale_val = float(m_scale.group(2))
+            if not execute:
+                result.update(matched=True, intent="DEVICE_CONTROL", action=f"set_scale {mon_target} {scale_val}", success=True)
+                return result
+            res = self.system.set_display_scale(mon_target, scale_val)
+            result.update(matched=True, intent="DEVICE_CONTROL", action=f"set_scale {mon_target} {scale_val}", success=res.get("success", False), speech=res.get("speech"))
             if res.get("speech") and self.system2 and self.system2.tts:
                 self.system2.tts.speak(res["speech"], block=False)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)

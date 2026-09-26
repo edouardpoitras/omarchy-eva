@@ -569,6 +569,73 @@ def cmd_clipboard(args: list[str]):
             print(f"   🗣️ Spoken: \"{res['speech']}\"")
 
 
+def cmd_audio(args: list[str]):
+    """Manage audio sinks and microphones."""
+    if not args or args[0] in ("list", "devices"):
+        cmd_exec(["list audio devices"])
+    elif args[0] in ("output", "out", "sink"):
+        target = " ".join(args[1:]) if len(args) > 1 else "headset"
+        cmd_exec([f"switch audio output to {target}"])
+    elif args[0] in ("input", "in", "source", "mic", "microphone"):
+        target = " ".join(args[1:]) if len(args) > 1 else "headset"
+        cmd_exec([f"switch microphone to {target}"])
+    else:
+        cmd_exec(["switch audio output to " + " ".join(args)])
+
+
+def cmd_wifi(args: list[str]):
+    """Manage WiFi connection, scanning, and status."""
+    if not args or args[0] in ("list", "scan"):
+        cmd_exec(["list wifi networks"])
+    elif args[0] in ("connect", "join"):
+        ssid = " ".join(args[1:])
+        cmd_exec([f"connect to wifi {ssid}"])
+    elif args[0] in ("disconnect", "down", "off"):
+        cmd_exec(["disconnect wifi"])
+    elif args[0] in ("status", "info"):
+        cmd_exec(["wifi status"])
+    else:
+        cmd_exec([f"connect to wifi {' '.join(args)}"])
+
+
+def cmd_bluetooth(args: list[str]):
+    """Manage Bluetooth devices, connection, and status."""
+    if not args or args[0] in ("list", "devices"):
+        cmd_exec(["list bluetooth devices"])
+    elif args[0] in ("connect", "pair"):
+        target = " ".join(args[1:])
+        cmd_exec([f"connect bluetooth {target}"])
+    elif args[0] in ("disconnect", "down"):
+        target = " ".join(args[1:]) if len(args) > 1 else ""
+        cmd_exec([f"disconnect bluetooth {target}".strip()])
+    elif args[0] in ("status", "info"):
+        cmd_exec(["bluetooth status"])
+    else:
+        cmd_exec([f"connect bluetooth {' '.join(args)}"])
+
+
+def cmd_brightness(args: list[str]):
+    """Manage screen brightness."""
+    if not args or args[0] in ("get", "status"):
+        cmd_exec(["what is the brightness"])
+    elif args[0] in ("up", "raise", "more", "+"):
+        cmd_exec(["brightness up"])
+    elif args[0] in ("down", "lower", "dim", "-"):
+        cmd_exec(["brightness down"])
+    else:
+        cmd_exec([f"set brightness to {args[0]}"])
+
+
+def cmd_display(args: list[str]):
+    """Manage displays and scaling."""
+    if not args or args[0] in ("list", "monitors"):
+        cmd_exec(["list displays"])
+    elif args[0] in ("scale", "set-scale") and len(args) >= 3:
+        cmd_exec([f"set display scale on {args[1]} to {args[2]}"])
+    else:
+        cmd_exec(["list displays"])
+
+
 def cmd_awareness():
     """Display status of background awareness monitors and telemetry."""
     ensure_daemon()
@@ -717,6 +784,11 @@ Reflex Desktop Controls & Telemetry:
   omarchy-jarvis apps                  List indexed desktop applications
   omarchy-jarvis close [app_name]      Close specified application or active window
   omarchy-jarvis top [--by cpu|memory] Show top resource-consuming processes
+  omarchy-jarvis audio [output|input|list] [dev] Switch audio output or mic
+  omarchy-jarvis wifi [list|connect|disconnect] Manage Wi-Fi connections
+  omarchy-jarvis bluetooth [list|connect|disc] Manage Bluetooth devices
+  omarchy-jarvis brightness [level|up|down] Adjust screen brightness
+  omarchy-jarvis display [list|scale]  Query displays or adjust scaling
   omarchy-jarvis system <action>       Hardware telemetry & power (battery, disk, ram, ip, shutdown...)
   omarchy-jarvis clipboard [read|clear] Read or clear Wayland clipboard
   omarchy-jarvis awareness             Show background sentinel status (CPU, RAM, network, weather)
@@ -766,6 +838,16 @@ def main():
         cmd_apps()
     elif cmd in ("close", "kill-app", "quit-app"):
         cmd_close(sys.argv[2:])
+    elif cmd in ("audio", "sound-device"):
+        cmd_audio(sys.argv[2:])
+    elif cmd in ("wifi", "network-wifi"):
+        cmd_wifi(sys.argv[2:])
+    elif cmd in ("bluetooth", "bt"):
+        cmd_bluetooth(sys.argv[2:])
+    elif cmd in ("brightness", "bright", "backlight"):
+        cmd_brightness(sys.argv[2:])
+    elif cmd in ("display", "displays", "monitor", "monitors"):
+        cmd_display(sys.argv[2:])
     elif cmd in ("system", "sys", "power"):
         cmd_system(sys.argv[2:])
     elif cmd in ("clipboard", "clip"):

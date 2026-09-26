@@ -60,6 +60,11 @@ omarchy-jarvis top [--by cpu|memory]    # Instant top resource consumers (<10ms)
 omarchy-jarvis close <app_name>         # Gracefully close window/app
 omarchy-jarvis system <action>          # battery | disk | ram | ip | time | uptime | temp | shutdown | reboot | suspend | lock
 omarchy-jarvis clipboard [read|clear]   # Wayland clipboard operations
+omarchy-jarvis audio [output|input|list] [dev] # Switch audio sinks or microphones (<60ms)
+omarchy-jarvis wifi [list|connect|disconnect]  # Scan nearby networks and connect (<10ms)
+omarchy-jarvis bluetooth [list|connect|disc]   # Manage Bluetooth device connections
+omarchy-jarvis brightness [level|up|down]      # Query or adjust screen brightness
+omarchy-jarvis display [list|scale]            # Inspect monitors or configure display scale
 
 # Smart App Switching & Compound Commands
 omarchy-jarvis exec "open spotify"                   # Switches workspace & focuses if open, launches if not
@@ -67,6 +72,20 @@ omarchy-jarvis exec "where is discord"               # Reports workspace & focus
 omarchy-jarvis exec "open spotify on workspace 4"    # Moves or launches app onto target workspace
 omarchy-jarvis exec "switch to workspace 2 and open ghostty" # Compound reflex chain (<50ms)
 omarchy-jarvis exec "system uptime and current workspace"    # Compound telemetry chain
+omarchy-jarvis exec "switch audio output to headset and dim screen" # Compound device chain
+
+# Hardware & Device Voice Routing (System 1)
+omarchy-jarvis exec "switch audio output device to headset" # PipeWire default sink switch
+omarchy-jarvis exec "switch audio output to speakers"       # Switch sink to speakers
+omarchy-jarvis exec "switch microphone to headset"          # PipeWire default source switch
+omarchy-jarvis exec "list audio devices"                    # List active audio sinks & mics
+omarchy-jarvis exec "list wifi networks"                    # Scan nearby Wi-Fi SSIDs
+omarchy-jarvis exec "connect to wifi Baxter"                # Connect to specified network
+omarchy-jarvis exec "wifi status"                           # Check active Wi-Fi connection
+omarchy-jarvis exec "list bluetooth devices"                # Enumerate paired Bluetooth devices
+omarchy-jarvis exec "set brightness to 70%"                 # Hardware display brightness
+omarchy-jarvis exec "dim screen"                            # Lower brightness by 10%
+omarchy-jarvis exec "list displays"                         # Hyprland monitor inspection
 
 # Extended Deterministic Controls
 omarchy-jarvis exec "focus left"        # Directional navigation (left/right/up/down)

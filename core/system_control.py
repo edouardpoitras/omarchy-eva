@@ -1,6 +1,7 @@
 """System Control, Process Telemetry, and Window Operations for Omarchy Linux."""
 
 import datetime
+import glob
 import json
 import os
 import re
@@ -511,4 +512,445 @@ class SystemControl:
             return {"success": True, "path": dest, "speech": f"Opening {t_clean} directory."}
         except Exception as e:
             return {"success": False, "error": str(e), "speech": f"Could not open {t_clean}."}
+
+    # --------------------------------------------------------- Audio Sinks & Sources
+    def get_audio_devices(self) -> Dict[str, Any]:
+        """Query wpctl status to enumerate active Audio Sinks (outputs) and Sources (microphones)."""
+        try:
+            proc = subprocess.run(["wpctl", "status"], capture_output=True, text=True, check=False, timeout=2.0)
+            if proc.returncode != 0 or not proc.stdout.strip():
+                return {"success": False, "sinks": [], "sources": [], "speech": "Audio subsystem status unavailable."}
+
+            lines = proc.stdout.splitlines()
+            sinks: List[Dict[str, Any]] = []
+            sources: List[Dict[str, Any]] = []
+            in_audio = False
+            current_section = None
+
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("Audio"):
+                    in_audio = True
+                    continue
+                elif stripped.startswith("Video") or stripped.startswith("Settings"):
+                    in_audio = False
+                    current_section = None
+                    continue
+
+                if not in_audio:
+                    continue
+
+                if "Sinks:" in line:
+                    current_section = "sinks"
+                    continue
+                elif "Sources:" in line:
+                    current_section = "sources"
+                    continue
+                elif any(sec in line for sec in ("Filters:", "Streams:", "Devices:")):
+                    current_section = None
+                    continue
+
+                if current_section in ("sinks", "sources"):
+                    m = re.search(r"([*]?)\s*(\d+)\.\s+(.*?)(?:\s+\[vol:\s*([0-9\.]+)\]|\s*$)", line)
+                    if m:
+                        is_def = m.group(1) == "*"
+                        dev_id = int(m.group(2))
+                        dev_name = m.group(3).strip()
+                        vol = float(m.group(4)) if m.group(4) else 1.0
+                        item = {"id": dev_id, "name": dev_name, "is_default": is_def, "volume": vol}
+                        if current_section == "sinks":
+                            sinks.append(item)
+                        else:
+                            sources.append(item)
+
+            return {"success": True, "sinks": sinks, "sources": sources}
+        except Exception as e:
+            return {"success": False, "sinks": [], "sources": [], "error": str(e), "speech": f"Could not inspect audio devices: {e}"}
+
+    def _match_audio_device(self, query: str, devices: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Fuzzy-match target device by query string, aliases, or device IDs."""
+        q = query.lower().strip()
+        if not q or not devices:
+            return None
+
+        # Check exact integer ID
+        if q.isdigit():
+            target_id = int(q)
+            for d in devices:
+                if d["id"] == target_id:
+                    return d
+
+        # Semantic alias expansions
+        ALIASES = {
+            "headset": ["kraken", "headset", "headphones", "analog stereo"],
+            "headphone": ["headphones", "headset", "kraken", "front headphones"],
+            "headphones": ["headphones", "headset", "kraken", "front headphones"],
+            "speaker": ["speaker", "speakers"],
+            "speakers": ["speaker", "speakers"],
+            "hdmi": ["hdmi", "digital stereo", "q27g2g4", "controller digital"],
+            "monitor": ["hdmi", "digital stereo", "q27g2g4", "controller digital"],
+            "tv": ["hdmi", "digital stereo"],
+            "spdif": ["s/pdif", "spdif", "optical"],
+            "optical": ["s/pdif", "spdif", "optical"],
+            "webcam": ["webcam", "vitade", "camera"],
+            "camera": ["webcam", "vitade", "camera"],
+            "mic": ["microphone", "mic"],
+            "microphone": ["microphone", "mic"],
+            "usb": ["usb audio", "usb"],
+            "line": ["line input", "line"],
+        }
+
+        # 1. Direct name substring match
+        for d in devices:
+            d_name = d["name"].lower()
+            if q == d_name or q in d_name:
+                return d
+
+        # 2. Match against alias keywords
+        expanded = ALIASES.get(q, [q])
+        for kw in expanded:
+            for d in devices:
+                d_name = d["name"].lower()
+                if kw in d_name:
+                    return d
+
+        # 3. Word token overlap
+        q_tokens = set(re.findall(r"[a-z0-9]+", q))
+        best_dev = None
+        max_overlap = 0
+        for d in devices:
+            d_tokens = set(re.findall(r"[a-z0-9]+", d["name"].lower()))
+            overlap = len(q_tokens & d_tokens)
+            if overlap > max_overlap:
+                max_overlap = overlap
+                best_dev = d
+
+        if max_overlap > 0:
+            return best_dev
+        return None
+
+    def switch_audio_output(self, target: str) -> Dict[str, Any]:
+        """Switch default PipeWire audio sink to target output device."""
+        res = self.get_audio_devices()
+        sinks = res.get("sinks", [])
+        if not sinks:
+            return {"success": False, "speech": "No audio output devices found."}
+
+        matched = self._match_audio_device(target, sinks)
+        if not matched:
+            avail = ", ".join(s["name"] for s in sinks[:3])
+            return {"success": False, "speech": f"Could not find output matching '{target}'. Available devices include: {avail}."}
+
+        dev_id = matched["id"]
+        dev_name = matched["name"]
+        try:
+            subprocess.run(["wpctl", "set-default", str(dev_id)], check=True, timeout=2.0)
+            return {
+                "success": True,
+                "device_id": dev_id,
+                "device_name": dev_name,
+                "speech": f"Audio output switched to {dev_name}.",
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Failed to switch audio output: {e}"}
+
+    def switch_audio_input(self, target: str) -> Dict[str, Any]:
+        """Switch default PipeWire audio source (microphone) to target input device."""
+        res = self.get_audio_devices()
+        sources = res.get("sources", [])
+        if not sources:
+            return {"success": False, "speech": "No microphone or audio input devices found."}
+
+        matched = self._match_audio_device(target, sources)
+        if not matched:
+            avail = ", ".join(s["name"] for s in sources[:3])
+            return {"success": False, "speech": f"Could not find microphone matching '{target}'. Available mics include: {avail}."}
+
+        dev_id = matched["id"]
+        dev_name = matched["name"]
+        try:
+            subprocess.run(["wpctl", "set-default", str(dev_id)], check=True, timeout=2.0)
+            return {
+                "success": True,
+                "device_id": dev_id,
+                "device_name": dev_name,
+                "speech": f"Microphone switched to {dev_name}.",
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Failed to switch microphone: {e}"}
+
+    def list_audio_devices_speech(self, kind: str = "all") -> Dict[str, Any]:
+        """Provide spoken readout of current audio outputs and microphones."""
+        res = self.get_audio_devices()
+        sinks = res.get("sinks", [])
+        sources = res.get("sources", [])
+
+        parts = []
+        if kind in ("all", "output", "sinks"):
+            cur_sink = next((s["name"] for s in sinks if s["is_default"]), None)
+            if cur_sink:
+                parts.append(f"Audio output is set to {cur_sink}. Total outputs: {len(sinks)}.")
+            else:
+                parts.append(f"Found {len(sinks)} output devices.")
+
+        if kind in ("all", "input", "sources", "mics", "microphones"):
+            cur_source = next((s["name"] for s in sources if s["is_default"]), None)
+            if cur_source:
+                parts.append(f"Microphone is set to {cur_source}. Total inputs: {len(sources)}.")
+            else:
+                parts.append(f"Found {len(sources)} microphone devices.")
+
+        speech = " ".join(parts) if parts else "No audio devices found."
+        return {"success": True, "sinks": sinks, "sources": sources, "speech": speech}
+
+    # --------------------------------------------------------- WiFi Management
+    def list_wifi_networks(self, rescan: bool = False) -> Dict[str, Any]:
+        """List nearby WiFi networks using nmcli (sub-10ms with cached scan)."""
+        try:
+            cmd = ["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "dev", "wifi", "list"]
+            if not rescan:
+                cmd.extend(["--rescan", "no"])
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=3.0)
+            if proc.returncode != 0 or not proc.stdout.strip():
+                return {"success": False, "networks": [], "speech": "No Wi-Fi networks found."}
+
+            networks = []
+            seen = set()
+            for line in proc.stdout.splitlines():
+                parts = line.strip().split(":")
+                if len(parts) >= 2:
+                    ssid = parts[0].strip()
+                    signal = parts[1].strip()
+                    sec = parts[2].strip() if len(parts) > 2 else ""
+                    if ssid and ssid not in seen:
+                        seen.add(ssid)
+                        networks.append({"ssid": ssid, "signal": signal, "security": sec})
+
+            if not networks:
+                return {"success": True, "networks": [], "speech": "No Wi-Fi access points currently in range."}
+
+            names = [n["ssid"] for n in networks[:4]]
+            speech = f"Found {len(networks)} Wi-Fi networks. Nearest are: {', '.join(names)}."
+            return {"success": True, "networks": networks, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "networks": [], "speech": f"Could not scan Wi-Fi: {e}"}
+
+    def connect_wifi(self, ssid: str, password: Optional[str] = None) -> Dict[str, Any]:
+        """Connect to a WiFi network via nmcli."""
+        clean_ssid = ssid.strip().strip("\"'")
+        if not clean_ssid:
+            return {"success": False, "speech": "Please specify a Wi-Fi network SSID."}
+        try:
+            cmd = ["nmcli", "dev", "wifi", "connect", clean_ssid]
+            if password:
+                cmd.extend(["password", password])
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=12.0)
+            if proc.returncode == 0:
+                return {"success": True, "ssid": clean_ssid, "speech": f"Successfully connected to Wi-Fi {clean_ssid}."}
+            else:
+                err = proc.stderr.strip() or proc.stdout.strip()
+                return {"success": False, "error": err, "speech": f"Failed to connect to {clean_ssid}: {err}"}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Error connecting to Wi-Fi {clean_ssid}."}
+
+    def disconnect_wifi(self) -> Dict[str, Any]:
+        """Disconnect wireless interface."""
+        try:
+            proc = subprocess.run(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device"], capture_output=True, text=True, check=False)
+            wifi_dev = None
+            for line in proc.stdout.splitlines():
+                parts = line.strip().split(":")
+                if len(parts) >= 2 and parts[1] == "wifi":
+                    wifi_dev = parts[0]
+                    break
+            if wifi_dev:
+                subprocess.run(["nmcli", "device", "disconnect", wifi_dev], check=True, timeout=3.0)
+                return {"success": True, "device": wifi_dev, "speech": "Disconnected from Wi-Fi."}
+            subprocess.run(["nmcli", "radio", "wifi", "off"], check=True, timeout=2.0)
+            return {"success": True, "speech": "Wi-Fi interface disabled."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not disconnect Wi-Fi: {e}"}
+
+    def get_wifi_status(self) -> Dict[str, Any]:
+        """Check active WiFi connection, SSID, and signal."""
+        try:
+            proc = subprocess.run(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], capture_output=True, text=True, check=False, timeout=2.0)
+            wifi_conn = None
+            for line in proc.stdout.splitlines():
+                parts = line.split(":")
+                if len(parts) >= 4 and parts[1] == "wifi" and parts[2] == "connected":
+                    wifi_conn = parts[3]
+                    break
+
+            if wifi_conn:
+                speech = f"Connected to Wi-Fi network {wifi_conn}."
+                return {"success": True, "connected": True, "ssid": wifi_conn, "speech": speech}
+            else:
+                return {"success": True, "connected": False, "speech": "Wi-Fi is not currently connected to any network."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not check Wi-Fi status: {e}"}
+
+    # --------------------------------------------------------- Bluetooth Management
+    def list_bluetooth_devices(self) -> Dict[str, Any]:
+        """Enumerate paired and available Bluetooth devices."""
+        try:
+            proc = subprocess.run(["bluetoothctl", "devices"], capture_output=True, text=True, check=False, timeout=2.0)
+            devices = []
+            for line in proc.stdout.splitlines():
+                m = re.match(r"^Device\s+([0-9A-Fa-f:]+)\s+(.+)$", line.strip())
+                if m:
+                    devices.append({"mac": m.group(1), "name": m.group(2).strip()})
+
+            proc_conn = subprocess.run(["bluetoothctl", "devices", "Connected"], capture_output=True, text=True, check=False, timeout=2.0)
+            connected_macs = set()
+            for line in proc_conn.stdout.splitlines():
+                m = re.match(r"^Device\s+([0-9A-Fa-f:]+)", line.strip())
+                if m:
+                    connected_macs.add(m.group(1))
+
+            for d in devices:
+                d["connected"] = d["mac"] in connected_macs
+
+            if not devices:
+                return {"success": True, "devices": [], "speech": "No paired Bluetooth devices found."}
+
+            names = [f"{d['name']} (connected)" if d.get("connected") else d["name"] for d in devices]
+            speech = f"Paired Bluetooth devices: {', '.join(names)}."
+            return {"success": True, "devices": devices, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "devices": [], "speech": f"Could not list Bluetooth devices: {e}"}
+
+    def connect_bluetooth(self, target: str) -> Dict[str, Any]:
+        """Connect to a Bluetooth device matching name or MAC."""
+        res = self.list_bluetooth_devices()
+        devices = res.get("devices", [])
+        q = target.lower().strip()
+        matched = None
+        for d in devices:
+            if q == d["mac"].lower() or q in d["name"].lower() or d["name"].lower() in q:
+                matched = d
+                break
+
+        target_mac = matched["mac"] if matched else target.strip()
+        target_name = matched["name"] if matched else target.strip()
+
+        try:
+            proc = subprocess.run(["bluetoothctl", "connect", target_mac], capture_output=True, text=True, check=False, timeout=6.0)
+            if proc.returncode == 0 and "Successful" in proc.stdout:
+                return {"success": True, "mac": target_mac, "name": target_name, "speech": f"Connected to Bluetooth device {target_name}."}
+            else:
+                err = proc.stdout.strip() or proc.stderr.strip()
+                if "already connected" in err.lower():
+                    return {"success": True, "mac": target_mac, "name": target_name, "speech": f"{target_name} is already connected."}
+                return {"success": False, "error": err, "speech": f"Failed to connect to {target_name}."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Bluetooth connection error: {e}"}
+
+    def disconnect_bluetooth(self, target: Optional[str] = None) -> Dict[str, Any]:
+        """Disconnect a specific or all connected Bluetooth devices."""
+        try:
+            if target:
+                res = self.list_bluetooth_devices()
+                devices = res.get("devices", [])
+                q = target.lower().strip()
+                matched = None
+                for d in devices:
+                    if q == d["mac"].lower() or q in d["name"].lower():
+                        matched = d
+                        break
+                target_mac = matched["mac"] if matched else target.strip()
+                subprocess.run(["bluetoothctl", "disconnect", target_mac], check=False, timeout=3.0)
+                name = matched["name"] if matched else target
+                return {"success": True, "speech": f"Disconnected Bluetooth device {name}."}
+            else:
+                proc = subprocess.run(["bluetoothctl", "devices", "Connected"], capture_output=True, text=True, check=False, timeout=2.0)
+                disconnected = []
+                for line in proc.stdout.splitlines():
+                    m = re.match(r"^Device\s+([0-9A-Fa-f:]+)\s+(.+)$", line.strip())
+                    if m:
+                        subprocess.run(["bluetoothctl", "disconnect", m.group(1)], check=False, timeout=2.0)
+                        disconnected.append(m.group(2).strip())
+                if disconnected:
+                    return {"success": True, "speech": f"Disconnected Bluetooth: {', '.join(disconnected)}."}
+                return {"success": True, "speech": "No active Bluetooth connections to disconnect."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not disconnect Bluetooth: {e}"}
+
+    # --------------------------------------------------------- Display & Brightness Controls
+    def get_brightness(self) -> Dict[str, Any]:
+        """Query current screen brightness percentage."""
+        try:
+            backlights = glob.glob("/sys/class/backlight/*")
+            if backlights:
+                bl_dir = backlights[0]
+                with open(os.path.join(bl_dir, "brightness"), "r") as f:
+                    cur = float(f.read().strip())
+                with open(os.path.join(bl_dir, "max_brightness"), "r") as f:
+                    mx = float(f.read().strip())
+                pct = int(round((cur / mx) * 100.0))
+                return {"success": True, "level": pct, "type": "backlight", "speech": f"Screen brightness is at {pct} percent."}
+
+            proc = subprocess.run(["ddcutil", "--brief", "getvcp", "10", "--display", "1"], capture_output=True, text=True, check=False, timeout=2.0)
+            if proc.returncode == 0:
+                parts = proc.stdout.strip().split()
+                if len(parts) >= 4 and parts[0] == "VCP" and parts[1] == "10":
+                    pct = int(parts[3])
+                    return {"success": True, "level": pct, "type": "ddcutil", "speech": f"Display brightness is at {pct} percent."}
+
+            return {"success": False, "speech": "Brightness hardware controls unavailable on this display."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not read brightness."}
+
+    def set_brightness(self, level: int) -> Dict[str, Any]:
+        """Set screen brightness percentage (0-100)."""
+        clamped = max(1, min(100, level))
+        try:
+            backlights = glob.glob("/sys/class/backlight/*")
+            if backlights:
+                subprocess.run(["brightnessctl", "set", f"{clamped}%"], check=True, timeout=2.0)
+                return {"success": True, "level": clamped, "speech": f"Brightness set to {clamped} percent."}
+
+            subprocess.Popen(["ddcutil", "setvcp", "10", str(clamped)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return {"success": True, "level": clamped, "speech": f"Setting display brightness to {clamped} percent."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not set brightness: {e}"}
+
+    def adjust_brightness(self, delta: int) -> Dict[str, Any]:
+        """Step brightness up or down by delta percentage."""
+        cur_res = self.get_brightness()
+        cur_val = cur_res.get("level", 50)
+        target = max(5, min(100, cur_val + delta))
+        return self.set_brightness(target)
+
+    def list_displays(self) -> Dict[str, Any]:
+        """Query active Hyprland monitors, resolutions, and active workspaces."""
+        try:
+            proc = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True, check=False, timeout=1.0)
+            if proc.returncode == 0 and proc.stdout.strip():
+                monitors = json.loads(proc.stdout)
+                descriptions = []
+                for m in monitors:
+                    name = m.get("name", "")
+                    w = m.get("width", 0)
+                    h = m.get("height", 0)
+                    scale = m.get("scale", 1.0)
+                    ws_id = m.get("activeWorkspace", {}).get("name", "")
+                    focused = m.get("focused", False)
+                    desc = f"{name} ({w}x{h}, scale {scale}, workspace {ws_id}{', focused' if focused else ''})"
+                    descriptions.append(desc)
+                speech = f"Connected displays: {'; '.join(descriptions)}."
+                return {"success": True, "monitors": monitors, "speech": speech}
+            return {"success": False, "speech": "Could not inspect connected monitors."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Display query failed: {e}"}
+
+    def set_display_scale(self, monitor: str, scale: float) -> Dict[str, Any]:
+        """Adjust Hyprland monitor display scale."""
+        try:
+            arg = f"{monitor},preferred,auto,{scale}"
+            subprocess.run(["hyprctl", "keyword", "monitor", arg], check=True, timeout=1.0)
+            return {"success": True, "monitor": monitor, "scale": scale, "speech": f"Display {monitor} scale set to {scale}."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not change display scale: {e}"}
+
 

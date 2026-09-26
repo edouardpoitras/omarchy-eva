@@ -103,10 +103,12 @@ intents:
       - "what music is this"
 
   AUDIO_CONTROL:
-    description: "Adjust PipeWire volume, output muting, and microphone state"
-    actions: [volume_up, volume_down, set_volume, mute_toggle, mic_mute, mic_unmute]
+    description: "Adjust PipeWire volume, output muting, microphone state, and audio device routing"
+    actions: [volume_up, volume_down, set_volume, mute_toggle, mic_mute, mic_unmute, switch_output, switch_input, list_devices]
     slots:
       level: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+      sink: ["headset", "speakers", "headphones", "kraken", "hdmi", "monitor", "spdif"]
+      source: ["headset", "webcam", "camera", "usb mic", "microphone", "mic"]
     templates:
       - "volume up"
       - "turn it up"
@@ -123,20 +125,66 @@ intents:
       - "silence mic"
       - "unmute microphone"
       - "unmute mic"
+      - "switch audio output to {sink}"
+      - "switch audio output device to {sink}"
+      - "switch audio to {sink}"
+      - "change audio to {sink}"
+      - "switch to {sink} audio"
+      - "switch output to {sink}"
+      - "switch microphone to {source}"
+      - "switch mic to {source}"
+      - "change microphone to {source}"
+      - "switch to {source} mic"
+      - "list audio devices"
+      - "list microphones"
+      - "list audio outputs"
 
   DEVICE_CONTROL:
-    description: "Control hardware radios, notifications, idle inhibitor, and desktop bars"
+    description: "Control hardware radios, networks, bluetooth, brightness, displays, notifications, and bars"
+    slots:
+      network: ["Baxter", "Home", "Office", "20083", "Guest"]
+      device: ["headset", "headphones", "mouse", "keyboard", "phone"]
+      level: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+      scale: [1.0, 1.25, 1.5, 1.75, 2.0]
     templates:
       - "toggle wifi"
       - "turn on wifi"
       - "turn off wifi"
       - "enable wifi"
       - "disable wifi"
+      - "list wifi networks"
+      - "scan wifi"
+      - "available wifi"
+      - "connect to wifi {network}"
+      - "connect wifi {network}"
+      - "disconnect wifi"
+      - "wifi status"
       - "toggle bluetooth"
       - "turn on bluetooth"
       - "turn off bluetooth"
       - "enable bluetooth"
       - "disable bluetooth"
+      - "list bluetooth devices"
+      - "paired bluetooth devices"
+      - "connect bluetooth {device}"
+      - "disconnect bluetooth {device}"
+      - "disconnect bluetooth"
+      - "bluetooth status"
+      - "set brightness to {level} percent"
+      - "brightness {level} percent"
+      - "brightness up"
+      - "increase brightness"
+      - "make screen brighter"
+      - "brightness down"
+      - "decrease brightness"
+      - "dim screen"
+      - "current brightness"
+      - "what is the brightness"
+      - "list displays"
+      - "list monitors"
+      - "what displays are connected"
+      - "display settings"
+      - "set display scale to {scale}"
       - "toggle dnd"
       - "toggle do not disturb"
       - "silence notifications"
