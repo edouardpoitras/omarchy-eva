@@ -1,0 +1,216 @@
+{"text": "could you set volume to 40 percent thanks", "intent": "AUDIO_CONTROL"}
+{"text": "hey jarvis set volume to 20 percent right now", "intent": "AUDIO_CONTROL"}
+{"text": "um transfer window to workspace 6 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey jarvis fullscreen screenshot", "intent": "SYSTEM_ACTION"}
+{"text": "could you focus neovim thanks", "intent": "HYPR_FOCUS"}
+{"text": "jarvis go to workspace 9 now", "intent": "HYPR_WORKSPACE"}
+{"text": "uh tell me why my sound is not working please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "um screenshot region now", "intent": "SYSTEM_ACTION"}
+{"text": "i want to toggle floating right now", "intent": "HYPR_WINDOW"}
+{"text": "hey jarvis show me brave thanks", "intent": "HYPR_FOCUS"}
+{"text": "could you capture full screen please", "intent": "SYSTEM_ACTION"}
+{"text": "go ahead and resume video for me", "intent": "MEDIA_CONTROL"}
+{"text": "bring up chrome thanks", "intent": "HYPR_FOCUS"}
+{"text": "jarvis turn it up please", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis open desktop 7 thanks", "intent": "HYPR_WORKSPACE"}
+{"text": "quick open terminal thanks", "intent": "APP_LAUNCH"}
+{"text": "um set volume to 80 percent please", "intent": "AUDIO_CONTROL"}
+{"text": "um toggle fullscreen please", "intent": "HYPR_WINDOW"}
+{"text": "could you open file manager right now", "intent": "APP_LAUNCH"}
+{"text": "hey jarvis capture full screen now", "intent": "SYSTEM_ACTION"}
+{"text": "um show me ghostty", "intent": "HYPR_FOCUS"}
+{"text": "i want to go to workspace 10 please", "intent": "HYPR_WORKSPACE"}
+{"text": "can you bring up obsidian for me", "intent": "HYPR_FOCUS"}
+{"text": "i want to pause video right now", "intent": "MEDIA_CONTROL"}
+{"text": "uh lock screen right now", "intent": "SYSTEM_ACTION"}
+{"text": "could you organize my workspace windows into a 3-way vertical split", "intent": "ESCALATE_GENERATIVE"}
+{"text": "i want to volume 40 for me", "intent": "AUDIO_CONTROL"}
+{"text": "quick launch neovim now", "intent": "APP_LAUNCH"}
+{"text": "quick next song for me", "intent": "MEDIA_CONTROL"}
+{"text": "i want to capture full screen now", "intent": "SYSTEM_ACTION"}
+{"text": "could you kill active window right now", "intent": "HYPR_WINDOW"}
+{"text": "uh bring up terminal now", "intent": "HYPR_FOCUS"}
+{"text": "what is the best way to optimize battery life on hyprland for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "could you open terminal thanks", "intent": "APP_LAUNCH"}
+{"text": "jarvis skip song for me", "intent": "MEDIA_CONTROL"}
+{"text": "um unfloat window please", "intent": "HYPR_WINDOW"}
+{"text": "i want to quit this window", "intent": "HYPR_WINDOW"}
+{"text": "could you transfer window to workspace 4", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "could you open browser for me", "intent": "APP_LAUNCH"}
+{"text": "can you float this window thanks", "intent": "HYPR_WINDOW"}
+{"text": "uh launch neovim thanks", "intent": "APP_LAUNCH"}
+{"text": "switch to ghostty right now", "intent": "HYPR_FOCUS"}
+{"text": "could you search the web for modernbert benchmark scores please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "i want to toggle fullscreen thanks", "intent": "HYPR_WINDOW"}
+{"text": "could you toggle playback please", "intent": "MEDIA_CONTROL"}
+{"text": "go ahead and toggle playback right now", "intent": "MEDIA_CONTROL"}
+{"text": "please close window now", "intent": "HYPR_WINDOW"}
+{"text": "can you find the terminal with the failing build and restart it right now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "can you previous track thanks", "intent": "MEDIA_CONTROL"}
+{"text": "i want to new terminal window right now", "intent": "APP_LAUNCH"}
+{"text": "go ahead and next song for me", "intent": "MEDIA_CONTROL"}
+{"text": "go ahead and volume 100 please", "intent": "AUDIO_CONTROL"}
+{"text": "please bring up discord right now", "intent": "HYPR_FOCUS"}
+{"text": "please open desktop 9 now", "intent": "HYPR_WORKSPACE"}
+{"text": "quick put this on workspace 1", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "move window to workspace 6 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "uh set volume to 50 percent", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis quit this window thanks", "intent": "HYPR_WINDOW"}
+{"text": "could you organize my workspace windows into a 3-way vertical split now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "bring up browser please", "intent": "HYPR_FOCUS"}
+{"text": "quick volume 80 for me", "intent": "AUDIO_CONTROL"}
+{"text": "could you set volume to 100 percent please", "intent": "AUDIO_CONTROL"}
+{"text": "quick volume 70", "intent": "AUDIO_CONTROL"}
+{"text": "please focus browser", "intent": "HYPR_FOCUS"}
+{"text": "could you toggle nightlight please", "intent": "SYSTEM_ACTION"}
+{"text": "quick set volume to 90 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "can you show me brave thanks", "intent": "HYPR_FOCUS"}
+{"text": "turn off night light please", "intent": "SYSTEM_ACTION"}
+{"text": "uh launch terminal for me", "intent": "APP_LAUNCH"}
+{"text": "uh close window please", "intent": "HYPR_WINDOW"}
+{"text": "um explain how memory management works in linux thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "i want to go to workspace 1 right now", "intent": "HYPR_WORKSPACE"}
+{"text": "new terminal window for me", "intent": "APP_LAUNCH"}
+{"text": "hey jarvis put this on workspace 1", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "quick launch terminal", "intent": "APP_LAUNCH"}
+{"text": "i want to switch to workspace 9", "intent": "HYPR_WORKSPACE"}
+{"text": "hey jarvis launch neovim please", "intent": "APP_LAUNCH"}
+{"text": "i want to open browser right now", "intent": "APP_LAUNCH"}
+{"text": "please unmute mic for me", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis send window to desktop 6 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey jarvis switch to workspace 7 for me", "intent": "HYPR_WORKSPACE"}
+{"text": "um open editor thanks", "intent": "APP_LAUNCH"}
+{"text": "um switch to foot please", "intent": "HYPR_FOCUS"}
+{"text": "jarvis explain the difference between ModernBERT and RoBERTa now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "jarvis quit this window", "intent": "HYPR_WINDOW"}
+{"text": "hey jarvis pause music now", "intent": "MEDIA_CONTROL"}
+{"text": "jarvis screenshot region now", "intent": "SYSTEM_ACTION"}
+{"text": "hey jarvis bring up slack right now", "intent": "HYPR_FOCUS"}
+{"text": "jarvis explain quantum computing to me thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "please play music right now", "intent": "MEDIA_CONTROL"}
+{"text": "next song", "intent": "MEDIA_CONTROL"}
+{"text": "quick jump to workspace 6 now", "intent": "HYPR_WORKSPACE"}
+{"text": "can you open desktop -1 right now", "intent": "HYPR_WORKSPACE"}
+{"text": "could you previous track now", "intent": "MEDIA_CONTROL"}
+{"text": "um focus chrome please", "intent": "HYPR_FOCUS"}
+{"text": "um previous song now", "intent": "MEDIA_CONTROL"}
+{"text": "open file manager for me", "intent": "APP_LAUNCH"}
+{"text": "lock workstation thanks", "intent": "SYSTEM_ACTION"}
+{"text": "please set volume to 10 percent", "intent": "AUDIO_CONTROL"}
+{"text": "i want to bring up obsidian for me", "intent": "HYPR_FOCUS"}
+{"text": "i want to open file manager now", "intent": "APP_LAUNCH"}
+{"text": "uh help me debug this rust compilation error please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "i want to put this on workspace 8 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "could you transfer window to workspace 5 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "um check system logs for kernel panics thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "please set volume to 40 percent", "intent": "AUDIO_CONTROL"}
+{"text": "could you fullscreen screenshot thanks", "intent": "SYSTEM_ACTION"}
+{"text": "jarvis turn on night light for me", "intent": "SYSTEM_ACTION"}
+{"text": "can you go to workspace 10 now", "intent": "HYPR_WORKSPACE"}
+{"text": "hey jarvis send window to desktop 7 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "uh bring up foot please", "intent": "HYPR_FOCUS"}
+{"text": "i want to make this fullscreen for me", "intent": "HYPR_WINDOW"}
+{"text": "quick toggle playback", "intent": "MEDIA_CONTROL"}
+{"text": "go ahead and put this on workspace 1 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "uh volume 20 now", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis tell me why my sound is not working for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "jarvis toggle window split for me", "intent": "HYPR_WINDOW"}
+{"text": "um launch neovim", "intent": "APP_LAUNCH"}
+{"text": "can you explain quantum computing to me please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey jarvis open browser now", "intent": "APP_LAUNCH"}
+{"text": "can you turn it down please", "intent": "AUDIO_CONTROL"}
+{"text": "volume 50 thanks", "intent": "AUDIO_CONTROL"}
+{"text": "could you send window to desktop 7 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "quick put this on workspace 5 now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "go ahead and write a bash script to clean up docker containers for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "uh volume 90 please", "intent": "AUDIO_CONTROL"}
+{"text": "go ahead and unmute mic right now", "intent": "AUDIO_CONTROL"}
+{"text": "uh open browser right now", "intent": "APP_LAUNCH"}
+{"text": "jarvis bring up firefox now", "intent": "HYPR_FOCUS"}
+{"text": "please open terminal please", "intent": "APP_LAUNCH"}
+{"text": "jarvis volume 50 thanks", "intent": "AUDIO_CONTROL"}
+{"text": "i want to send window to desktop 4 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "could you next song now", "intent": "MEDIA_CONTROL"}
+{"text": "hey jarvis bring up chrome", "intent": "HYPR_FOCUS"}
+{"text": "go ahead and set volume to 30 percent", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis show me discord for me", "intent": "HYPR_FOCUS"}
+{"text": "could you close window right now", "intent": "HYPR_WINDOW"}
+{"text": "please can you write a python script for this now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "please maximize window", "intent": "HYPR_WINDOW"}
+{"text": "uh pause video right now", "intent": "MEDIA_CONTROL"}
+{"text": "hey jarvis open file manager now", "intent": "APP_LAUNCH"}
+{"text": "hey jarvis transfer window to workspace 8", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "please transfer window to workspace 9 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "go ahead and jump to workspace 9 please", "intent": "HYPR_WORKSPACE"}
+{"text": "could you jump to workspace 1 thanks", "intent": "HYPR_WORKSPACE"}
+{"text": "uh pause playback thanks", "intent": "MEDIA_CONTROL"}
+{"text": "could you transfer window to workspace 1 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "um open terminal please", "intent": "APP_LAUNCH"}
+{"text": "can you switch to workspace 3 please", "intent": "HYPR_WORKSPACE"}
+{"text": "could you capture full screen thanks", "intent": "SYSTEM_ACTION"}
+{"text": "hey jarvis explain the difference between ModernBERT and RoBERTa now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey jarvis volume 90 please", "intent": "AUDIO_CONTROL"}
+{"text": "hey jarvis screenshot region now", "intent": "SYSTEM_ACTION"}
+{"text": "i want to float this window", "intent": "HYPR_WINDOW"}
+{"text": "i want to put this on workspace 8", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey jarvis volume 70 for me", "intent": "AUDIO_CONTROL"}
+{"text": "can you put this on workspace 10 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "jarvis pause video", "intent": "MEDIA_CONTROL"}
+{"text": "go ahead and capture full screen for me", "intent": "SYSTEM_ACTION"}
+{"text": "could you resume video please", "intent": "MEDIA_CONTROL"}
+{"text": "can you volume 100 please", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis switch to brave thanks", "intent": "HYPR_FOCUS"}
+{"text": "toggle window split for me", "intent": "HYPR_WINDOW"}
+{"text": "jarvis put this on workspace 9 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "please next track please", "intent": "MEDIA_CONTROL"}
+{"text": "quick check system logs for kernel panics for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "jarvis make it louder", "intent": "AUDIO_CONTROL"}
+{"text": "i want to switch to firefox", "intent": "HYPR_FOCUS"}
+{"text": "jarvis maximize window", "intent": "HYPR_WINDOW"}
+{"text": "please toggle fullscreen right now", "intent": "HYPR_WINDOW"}
+{"text": "can you lock workstation please", "intent": "SYSTEM_ACTION"}
+{"text": "please resume playback", "intent": "MEDIA_CONTROL"}
+{"text": "can you capture full screen thanks", "intent": "SYSTEM_ACTION"}
+{"text": "can you switch to workspace 8 please", "intent": "HYPR_WORKSPACE"}
+{"text": "um help me debug this rust compilation error", "intent": "ESCALATE_GENERATIVE"}
+{"text": "go ahead and move window to workspace 2", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "go ahead and explain the difference between ModernBERT and RoBERTa right now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey jarvis set volume to 40 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "please open file manager please", "intent": "APP_LAUNCH"}
+{"text": "hey jarvis switch to workspace 1", "intent": "HYPR_WORKSPACE"}
+{"text": "jarvis switch to workspace 2 please", "intent": "HYPR_WORKSPACE"}
+{"text": "quick help me debug this rust compilation error", "intent": "ESCALATE_GENERATIVE"}
+{"text": "next track please", "intent": "MEDIA_CONTROL"}
+{"text": "can you help me debug this rust compilation error", "intent": "ESCALATE_GENERATIVE"}
+{"text": "please turn off night light right now", "intent": "SYSTEM_ACTION"}
+{"text": "i want to maximize window thanks", "intent": "HYPR_WINDOW"}
+{"text": "can you jump to workspace +1 now", "intent": "HYPR_WORKSPACE"}
+{"text": "mute microphone thanks", "intent": "AUDIO_CONTROL"}
+{"text": "please can you write a python script for this", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey jarvis set volume to 30 percent thanks", "intent": "AUDIO_CONTROL"}
+{"text": "go ahead and unmute microphone thanks", "intent": "AUDIO_CONTROL"}
+{"text": "jarvis volume 40 please", "intent": "AUDIO_CONTROL"}
+{"text": "hey jarvis float this window right now", "intent": "HYPR_WINDOW"}
+{"text": "could you maximize window thanks", "intent": "HYPR_WINDOW"}
+{"text": "could you new terminal window right now", "intent": "APP_LAUNCH"}
+{"text": "uh open desktop +1 now", "intent": "HYPR_WORKSPACE"}
+{"text": "um open files now", "intent": "APP_LAUNCH"}
+{"text": "please move window to workspace 4 now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "set volume to 80 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "hey jarvis screenshot region", "intent": "SYSTEM_ACTION"}
+{"text": "go ahead and open editor now", "intent": "APP_LAUNCH"}
+{"text": "i want to focus terminal please", "intent": "HYPR_FOCUS"}
+{"text": "please pause playback for me", "intent": "MEDIA_CONTROL"}
+{"text": "hey jarvis previous track please", "intent": "MEDIA_CONTROL"}
+{"text": "lock workstation please", "intent": "SYSTEM_ACTION"}
+{"text": "could you kill active window thanks", "intent": "HYPR_WINDOW"}
+{"text": "quick write a bash script to clean up docker containers", "intent": "ESCALATE_GENERATIVE"}
+{"text": "please previous workspace", "intent": "HYPR_WORKSPACE"}
+{"text": "please bring up ghostty please", "intent": "HYPR_FOCUS"}
+{"text": "quick send window to desktop 5 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "focus chrome right now", "intent": "HYPR_FOCUS"}
+{"text": "um skip song", "intent": "MEDIA_CONTROL"}
+{"text": "uh launch terminal", "intent": "APP_LAUNCH"}
+{"text": "quick screenshot whole screen for me", "intent": "SYSTEM_ACTION"}
+{"text": "open terminal", "intent": "APP_LAUNCH"}
+{"text": "please transfer window to workspace 4 please", "intent": "HYPR_WINDOW_MOVE"}

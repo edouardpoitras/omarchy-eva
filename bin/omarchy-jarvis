@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""Jarvis CLI: Voice trigger, status, and manual command dispatch for Omarchy."""
+
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+from typing import Any, Dict, Optional
+
+# Ensure canonical repository root is on Python module search path
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+VENV_PYTHON = os.path.join(REPO_ROOT, ".venv", "bin", "python3")
+
+# Auto re-exec into project virtualenv if running under system python
+if sys.executable != VENV_PYTHON and os.path.exists(VENV_PYTHON):
+    os.execv(VENV_PYTHON, [VENV_PYTHON] + sys.argv)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from core.dispatcher import CommandDispatcher
+from core.system1_laya import LayaDecisionEngine
+
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+SOCKET_PATH = os.path.join(RUNTIME_DIR, "jarvis", "ipc.sock")
+
+
+def send_ipc(action: str, params: Optional[Dict[str, Any]] = None, timeout: float = 8.0) -> Optional[dict]:
+    """Send JSON-RPC request to the running Jarvis daemon."""
+    if not os.path.exists(SOCKET_PATH):
+        return None
+
+    req = {"action": action}
+    if params:
+        req.update(params)
+
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            s.connect(SOCKET_PATH)
+            s.sendall((json.dumps(req) + "\n").encode("utf-8"))
+
+            buffer = ""
+            while True:
+                data = s.recv(4096)
+                if not data:
+                    break
+                buffer += data.decode("utf-8", errors="replace")
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        # Skip async broadcast events to capture the direct RPC response
+                        if obj.get("type") == "state_change":
+                            continue
+                        return obj
+                    except json.JSONDecodeError:
+                        continue
+    except Exception:
+        return None
+    return None
+
+
+def ensure_daemon():
+    """Start daemon in background if not already active."""
+    if not os.path.exists(SOCKET_PATH):
+        daemon_bin = os.path.join(REPO_ROOT, "bin", "omarchy-jarvis-daemon")
+        subprocess.Popen(
+            [VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable, daemon_bin],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        for _ in range(20):
+            if os.path.exists(SOCKET_PATH):
+                break
+            time.sleep(0.05)
+
+
+def cmd_trigger():
+    """Toggle voice recording via daemon."""
+    ensure_daemon()
+    resp = send_ipc("record_toggle")
+    if resp:
+        if resp.get("status") == "ok":
+            state = resp.get("state", "")
+            if state == "recording":
+                print("🎙️ Jarvis: Listening... (speak command now)")
+            else:
+                res = resp.get("result", {})
+                print(f"⚡ Jarvis executed: {resp.get('transcription', '')}")
+                print(f"   Action: {res.get('action')} ({res.get('latency_ms', 0)}ms)")
+        else:
+            print(f"Jarvis: {resp.get('message', resp.get('error', 'Unknown response'))}")
+    else:
+        print("Error: Could not communicate with Jarvis daemon.")
+        sys.exit(1)
+
+
+def cmd_record_start():
+    """Start voice recording."""
+    ensure_daemon()
+    resp = send_ipc("record_start")
+    if resp and resp.get("status") == "ok":
+        print("🎙️ Jarvis: Recording started.")
+    else:
+        print("Error starting recording.")
+
+
+def cmd_record_stop():
+    """Stop voice recording and execute recognized command."""
+    ensure_daemon()
+    print("⏳ Jarvis: Transcribing and executing...")
+    resp = send_ipc("record_stop")
+    if resp and resp.get("status") == "ok":
+        res = resp.get("result", {})
+        print(f"⚡ Recognized: \"{resp.get('transcription', '')}\"")
+        print(f"   Intent: {res.get('intent')} | Action: {res.get('action')} ({res.get('latency_ms', 0)}ms)")
+    else:
+        print(f"Jarvis: {resp.get('message', 'Failed to transcribe speech.') if resp else 'No response.'}")
+
+
+def cmd_exec(args: list[str]):
+    """Execute raw text command directly or through daemon."""
+    text = " ".join(args).strip()
+    if not text:
+        print("Usage: omarchy-jarvis exec <command text>")
+        sys.exit(1)
+
+    resp = send_ipc("execute_text", {"text": text}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        res = resp.get("result", {})
+        print(f"⚡ Executed: \"{text}\"")
+        print(f"   Intent: {res.get('intent')}")
+        print(f"   Action: {res.get('action')}")
+        print(f"   Success: {res.get('success')} ({res.get('latency_ms', 0)}ms)")
+        return
+
+    dispatcher = CommandDispatcher()
+    res = dispatcher.dispatch_text(text)
+    print(f"⚡ In-Process Executed: \"{text}\"")
+    print(f"   Intent: {res.get('intent')}")
+    print(f"   Action: {res.get('action')}")
+    print(f"   Success: {res.get('success')} ({res.get('latency_ms', 0)}ms)")
+
+
+def cmd_classify(args: list[str]):
+    """Run Laya non-autoregressive decision model over text."""
+    text = " ".join(args).strip()
+    if not text:
+        print("Usage: omarchy-jarvis classify <text>")
+        sys.exit(1)
+
+    engine = LayaDecisionEngine()
+    if not engine.is_ready:
+        print("[-] Laya decision model is not yet trained/exported. Run: omarchy-jarvis train")
+        sys.exit(1)
+
+    res = engine.predict(text)
+    print(f"🧠 Laya Decision Model:")
+    print(f"   Input:      \"{text}\"")
+    print(f"   Intent:     {res['intent']}")
+    print(f"   Confidence: {res['confidence'] * 100:.2f}% (T={res['temperature']})")
+    print(f"   Confident:  {res['confident']} (Threshold: {res['threshold'] * 100:.0f}%)")
+    print(f"   Latency:    {res['latency_ms']} ms")
+    print(f"   Distribution:")
+    sorted_dist = sorted(res["distribution"].items(), key=lambda x: x[1], reverse=True)
+    for intent, p in sorted_dist[:4]:
+        bar = "█" * int(p * 20)
+        print(f"     - {intent:<20} {p * 100:5.1f}% |{bar}")
+
+
+def cmd_status():
+    """Show daemon status and last executed command."""
+    resp = send_ipc("get_status", timeout=1.0)
+    if resp:
+        print(f"Jarvis Daemon: Active (Socket: {SOCKET_PATH})")
+        print(f"State: {resp.get('state', 'unknown')}")
+        print(f"Last Command: {resp.get('last_command', 'none')}")
+        last_res = resp.get("last_result", {})
+        if last_res:
+            print(f"Last Action: {last_res.get('action')} ({last_res.get('latency_ms', 0)}ms)")
+    else:
+        print(f"Jarvis Daemon: Inactive (Socket {SOCKET_PATH} not found)")
+
+
+def cmd_generate(args: list[str]):
+    """Generate training dataset from schema."""
+    script = os.path.join(REPO_ROOT, "training", "dataset_generator.py")
+    py = VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable
+    cmd = [py, script] + args
+    subprocess.run(cmd)
+
+
+def cmd_train(args: list[str]):
+    """Fine-tune Laya model and export to ONNX."""
+    script = os.path.join(REPO_ROOT, "training", "train_laya.py")
+    py = VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable
+    cmd = [py, script] + args
+    subprocess.run(cmd)
+
+
+def cmd_calibrate():
+    """Run temperature calibration."""
+    script = os.path.join(REPO_ROOT, "training", "calibrate.py")
+    py = VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable
+    subprocess.run([py, script])
+
+
+def print_help():
+    print("""Omarchy Jarvis Voice Automation CLI
+
+Usage:
+  omarchy-jarvis trigger               Toggle voice recording (SUPER+SHIFT+CTRL+X)
+  omarchy-jarvis record-start          Start voice capture (push-to-talk press)
+  omarchy-jarvis record-stop           Stop voice capture & execute (push-to-talk release)
+  omarchy-jarvis exec <command...>     Directly execute command text
+  omarchy-jarvis classify <text...>    Evaluate Laya decision model & calibrated confidence
+  omarchy-jarvis status                Show daemon status
+
+Machine Learning & Model Tuning:
+  omarchy-jarvis generate              Generate training dataset from schema
+  omarchy-jarvis train                 Fine-tune Laya ModernBERT on GPU/CPU & export to ONNX
+  omarchy-jarvis calibrate             Run Platt temperature scaling & calibration check
+  omarchy-jarvis --help                Show this message
+""")
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
+        print_help()
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+    if cmd in ("trigger", "record-toggle"):
+        cmd_trigger()
+    elif cmd == "record-start":
+        cmd_record_start()
+    elif cmd == "record-stop":
+        cmd_record_stop()
+    elif cmd in ("exec", "run"):
+        cmd_exec(sys.argv[2:])
+    elif cmd == "classify":
+        cmd_classify(sys.argv[2:])
+    elif cmd == "generate":
+        cmd_generate(sys.argv[2:])
+    elif cmd == "train":
+        cmd_train(sys.argv[2:])
+    elif cmd == "calibrate":
+        cmd_calibrate()
+    elif cmd == "status":
+        cmd_status()
+    else:
+        print(f"Unknown command: {cmd}")
+        print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

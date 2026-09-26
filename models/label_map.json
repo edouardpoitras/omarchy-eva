@@ -1,0 +1,24 @@
+{
+  "label_to_idx": {
+    "APP_LAUNCH": 0,
+    "AUDIO_CONTROL": 1,
+    "ESCALATE_GENERATIVE": 2,
+    "HYPR_FOCUS": 3,
+    "HYPR_WINDOW": 4,
+    "HYPR_WINDOW_MOVE": 5,
+    "HYPR_WORKSPACE": 6,
+    "MEDIA_CONTROL": 7,
+    "SYSTEM_ACTION": 8
+  },
+  "idx_to_label": {
+    "0": "APP_LAUNCH",
+    "1": "AUDIO_CONTROL",
+    "2": "ESCALATE_GENERATIVE",
+    "3": "HYPR_FOCUS",
+    "4": "HYPR_WINDOW",
+    "5": "HYPR_WINDOW_MOVE",
+    "6": "HYPR_WORKSPACE",
+    "7": "MEDIA_CONTROL",
+    "8": "SYSTEM_ACTION"
+  }
+}

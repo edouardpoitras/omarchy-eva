@@ -1,0 +1,146 @@
+# Omarchy Jarvis Command Grammar Schema
+# Defines categories, actions, dynamic slot entities, and seed templates
+# Used by dataset_generator.py to synthesize fine-tuning data for Laya.
+
+version: 1.0
+
+intents:
+  HYPR_WORKSPACE:
+    description: "Switch to or navigate between Hyprland workspaces"
+    slots:
+      target: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, "+1", "-1"]
+    templates:
+      - "switch to workspace {target}"
+      - "go to workspace {target}"
+      - "jump to workspace {target}"
+      - "open desktop {target}"
+      - "next workspace"
+      - "previous workspace"
+      - "switch back to former workspace"
+
+  HYPR_WINDOW_MOVE:
+    description: "Move the active window to a specific workspace"
+    slots:
+      target: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    templates:
+      - "move window to workspace {target}"
+      - "send window to desktop {target}"
+      - "put this on workspace {target}"
+      - "transfer window to workspace {target}"
+
+  HYPR_WINDOW:
+    description: "Manipulate active window layout, sizing, or state"
+    actions: [close, fullscreen, float, split]
+    templates:
+      - "close window"
+      - "close this window"
+      - "kill active window"
+      - "quit this window"
+      - "make this fullscreen"
+      - "toggle fullscreen"
+      - "maximize window"
+      - "toggle floating"
+      - "float this window"
+      - "unfloat window"
+      - "toggle window split"
+
+  HYPR_FOCUS:
+    description: "Focus a running application by name or window class"
+    slots:
+      app: ["neovim", "foot", "kitty", "ghostty", "terminal", "browser", "chrome", "firefox", "brave", "obsidian", "spotify", "discord", "slack"]
+    templates:
+      - "focus {app}"
+      - "bring up {app}"
+      - "switch to {app}"
+      - "show me {app}"
+
+  MEDIA_CONTROL:
+    description: "Control MPRIS and browser media playback (YouTube, Spotify, etc.)"
+    actions: [play, pause, play_pause, next, previous]
+    templates:
+      - "pause music"
+      - "pause video"
+      - "pause playback"
+      - "hold playback"
+      - "play music"
+      - "resume playback"
+      - "resume video"
+      - "toggle playback"
+      - "next track"
+      - "next song"
+      - "skip track"
+      - "skip song"
+      - "previous track"
+      - "previous song"
+
+  AUDIO_CONTROL:
+    description: "Adjust PipeWire volume, output muting, and microphone state"
+    actions: [volume_up, volume_down, set_volume, mute_toggle, mic_mute, mic_unmute]
+    slots:
+      level: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    templates:
+      - "volume up"
+      - "turn it up"
+      - "make it louder"
+      - "volume down"
+      - "turn it down"
+      - "quieter"
+      - "set volume to {level} percent"
+      - "volume {level}"
+      - "mute audio"
+      - "toggle mute"
+      - "mute microphone"
+      - "mute mic"
+      - "silence mic"
+      - "unmute microphone"
+      - "unmute mic"
+
+  SYSTEM_ACTION:
+    description: "Operating system actions (lock, screenshots, nightlight)"
+    actions: [lock, screenshot_smart, screenshot_fullscreen, toggle_nightlight]
+    templates:
+      - "lock workstation"
+      - "lock screen"
+      - "lock computer"
+      - "take screenshot"
+      - "capture screenshot"
+      - "screenshot region"
+      - "fullscreen screenshot"
+      - "capture full screen"
+      - "screenshot whole screen"
+      - "toggle nightlight"
+      - "turn on night light"
+      - "turn off night light"
+
+  APP_LAUNCH:
+    description: "Launch desktop applications"
+    actions: [terminal, browser, editor, files]
+    templates:
+      - "open terminal"
+      - "launch terminal"
+      - "new terminal window"
+      - "open browser"
+      - "launch browser"
+      - "open editor"
+      - "launch neovim"
+      - "open file manager"
+      - "open files"
+
+  ESCALATE_GENERATIVE:
+    description: "Deliberative reasoning, open questions, diagnostic commands, code generation"
+    templates:
+      - "why is the bluetooth daemon failing?"
+      - "write a bash script to clean up docker containers"
+      - "explain the difference between ModernBERT and RoBERTa"
+      - "explain quantum computing to me"
+      - "explain how memory management works in linux"
+      - "how do I configure wireguard on arch linux"
+      - "what is the best way to optimize battery life on hyprland"
+      - "find the terminal with the failing build and restart it"
+      - "check system logs for kernel panics"
+      - "organize my workspace windows into a 3-way vertical split"
+      - "help me debug this rust compilation error"
+      - "search the web for modernbert benchmark scores"
+      - "summarize the latest git commits"
+      - "can you write a python script for this"
+      - "tell me why my sound is not working"

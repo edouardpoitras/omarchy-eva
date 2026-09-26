@@ -1,0 +1,8 @@
+{
+  "temperature": 0.1,
+  "accuracy": 100.0,
+  "ece_before": 0.0047,
+  "ece_after": 0.0,
+  "threshold": 0.85,
+  "samples": 216
+}
