@@ -24,16 +24,48 @@ Item {
   }
 
   // Runtime state
-  property string jarvisState: "idle" // "idle", "listening", "transcribing", "executing", "error"
+  property string jarvisState: "idle" // "idle", "listening", "transcribing", "deliberating", "clarifying", "executing", "error"
   property string lastCommand: ""
   property string lastAction: ""
+  property string intent: ""
+  property real confidence: 1.0
+  property string agentResponse: ""
   property real latencyMs: 0.0
 
   readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + (Quickshell.env("UID") || "1000"))
   readonly property string voxtypeStatePath: runtimeDir + "/voxtype/state"
+  readonly property string jarvisStatePath: runtimeDir + "/jarvis/state.json"
   readonly property string jarvisSocketPath: runtimeDir + "/jarvis/ipc.sock"
 
-  // Watch Voxtype daemon state
+  // Watch Jarvis daemon state file (atomic state updates from daemon)
+  FileView {
+    id: jarvisWatcher
+    path: root.jarvisStatePath
+    watchChanges: true
+    printErrors: false
+
+    onLoaded: updateFromJarvis()
+    onFileChanged: reload()
+    onLoadFailed: {
+      // Retain existing state if temporarily locked
+    }
+  }
+
+  function updateFromJarvis() {
+    var raw = (jarvisWatcher.text() || "").trim()
+    if (!raw) return
+    try {
+      var data = JSON.parse(raw)
+      if (data.state) root.jarvisState = data.state
+      if (data.command !== undefined) root.lastCommand = data.command
+      if (data.action !== undefined) root.lastAction = data.action
+      if (data.intent !== undefined) root.intent = data.intent
+      if (data.confidence !== undefined) root.confidence = data.confidence
+      if (data.response !== undefined) root.agentResponse = data.response
+    } catch (e) {}
+  }
+
+  // Watch Voxtype daemon state for fallback
   FileView {
     id: voxtypeWatcher
     path: root.voxtypeStatePath
@@ -43,7 +75,7 @@ Item {
     onLoaded: updateFromVoxtype()
     onFileChanged: reload()
     onLoadFailed: {
-      if (root.jarvisState !== "idle") root.jarvisState = "idle"
+      if (root.jarvisState !== "idle" && !jarvisWatcher.exists) root.jarvisState = "idle"
     }
   }
 
@@ -61,24 +93,13 @@ Item {
     }
   }
 
-  // Poll status after execution to capture recognized command and latency
+  // Safety reset timer if state remains active without update
   Timer {
-    id: pollStatusTimer
-    interval: 150
+    id: safetyIdleTimer
+    interval: 8000
     repeat: false
     onTriggered: {
-      statusProcess.command = [root.pluginRoot + "/bin/omarchy-jarvis", "status"]
-      statusProcess.running = true
-    }
-  }
-
-  // Reset executing state back to idle after display flash
-  Timer {
-    id: resetExecutingTimer
-    interval: 2500
-    repeat: false
-    onTriggered: {
-      if (root.jarvisState === "executing") {
+      if (root.jarvisState !== "idle") {
         root.jarvisState = "idle"
       }
     }
@@ -87,30 +108,6 @@ Item {
   // Process to trigger voice recording
   Process {
     id: triggerProcess
-    stdout: StdioCollector { id: triggerOut; waitForEnd: true }
-    stderr: StdioCollector { id: triggerErr; waitForEnd: true }
-  }
-
-  // Process to query daemon status
-  Process {
-    id: statusProcess
-    stdout: StdioCollector {
-      id: statusOut
-      waitForEnd: true
-      onTextCollected: {
-        var txt = statusOut.text || ""
-        var lines = txt.split("\n")
-        for (var i = 0; i < lines.length; i++) {
-          var l = lines[i].trim()
-          if (l.startsWith("Last Command:")) {
-            root.lastCommand = l.substring(13).trim()
-          } else if (l.startsWith("Last Action:")) {
-            root.lastAction = l.substring(12).trim()
-          }
-        }
-        resetExecutingTimer.restart()
-      }
-    }
   }
 
   // Public action callable from BarWidget or keybindings
@@ -124,5 +121,16 @@ Item {
     id: daemonLauncher
     command: [root.pluginRoot + "/bin/omarchy-jarvis-daemon"]
     running: true
+  }
+
+  // Floating Iron Man Arc-Reactor HUD Overlay
+  HudOverlay {
+    id: hud
+    jarvisState: root.jarvisState
+    transcription: root.lastCommand
+    intent: root.intent
+    lastAction: root.lastAction
+    confidence: root.confidence
+    agentResponse: root.agentResponse
   }
 }

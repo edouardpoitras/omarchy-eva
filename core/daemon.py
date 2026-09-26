@@ -11,7 +11,10 @@ from typing import Any, Dict, List, Optional
 
 from core.dispatcher import CommandDispatcher
 from core.system2_agent import System2Agent
+from core.input_controller import InputController
+from core.soundscape import Soundscape
 from core.tts_kokoro import AVAILABLE_VOICES, KokoroTTS
+from core.vision_capture import VisionCapture
 from core.voxtype_bridge import VoxtypeBridge
 
 
@@ -28,10 +31,13 @@ class JarvisDaemon:
         self.socket_path = socket_path or os.path.join(
             self.jarvis_dir, "ipc.sock"
         )
+        self.sound = Soundscape()
         self.tts = KokoroTTS(lazy_init=True)
         self.system2 = System2Agent(tts=self.tts, enable_tts=True)
         self.dispatcher = CommandDispatcher(system2=self.system2)
         self.voxtype = VoxtypeBridge()
+        self.vision = VisionCapture()
+        self.input = InputController()
 
         self.state = "idle"
         self.last_command = ""
@@ -40,13 +46,49 @@ class JarvisDaemon:
         self._server_sock: Optional[socket.socket] = None
         self._clients: List[socket.socket] = []
         self._lock = threading.Lock()
+        self.set_state("idle")
 
-    def set_state(self, new_state: str):
-        """Update system state and notify subscribers."""
+    def set_state(
+        self,
+        new_state: str,
+        command: Optional[str] = None,
+        action: Optional[str] = None,
+        intent: Optional[str] = None,
+        confidence: Optional[float] = None,
+        response: Optional[str] = None,
+    ):
+        """Update system state, persist to state.json, and notify subscribers."""
         with self._lock:
-            if self.state != new_state:
-                self.state = new_state
-                self._broadcast({"type": "state_change", "state": self.state})
+            self.state = new_state
+            if command is not None:
+                self.last_command = command
+            if action is not None:
+                self.last_result["action"] = action
+            if intent is not None:
+                self.last_result["intent"] = intent
+            if confidence is not None:
+                self.last_result["confidence"] = confidence
+
+            state_data = {
+                "state": self.state,
+                "command": self.last_command,
+                "action": self.last_result.get("action", ""),
+                "intent": self.last_result.get("intent", ""),
+                "confidence": self.last_result.get("confidence", 1.0),
+                "response": response or self.last_result.get("response", ""),
+                "timestamp": time.time(),
+            }
+
+            try:
+                state_path = os.path.join(self.jarvis_dir, "state.json")
+                tmp_path = f"{state_path}.tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(state_data, f)
+                os.replace(tmp_path, state_path)
+            except Exception:
+                pass
+
+            self._broadcast({"type": "state_change", **state_data})
 
     def _broadcast(self, msg: dict):
         """Broadcast an event message to all connected clients."""
@@ -78,11 +120,24 @@ class JarvisDaemon:
             if not text:
                 return {"status": "error", "error": "Empty text provided"}
 
-            self.set_state("executing")
+            self.set_state("transcribing", command=text)
             res = self.dispatcher.dispatch_text(text)
             self.last_command = text
             self.last_result = res
-            self.set_state("idle")
+            intent = res.get("intent", "")
+            action_name = res.get("action", "")
+            confidence = res.get("confidence", 1.0)
+            self.set_state("executing", command=text, action=action_name, intent=intent, confidence=confidence)
+            if res.get("success") and intent != "ESCALATE_GENERATIVE":
+                self.sound.success()
+            elif not res.get("matched"):
+                self.sound.error()
+
+            def _reset_exec():
+                time.sleep(1.8)
+                self.set_state("idle")
+            threading.Thread(target=_reset_exec, daemon=True).start()
+
             return {"status": "ok", "result": res}
 
         elif action == "classify":
@@ -97,9 +152,18 @@ class JarvisDaemon:
             speak = req.get("speak", True)
             if not text:
                 return {"status": "error", "error": "Empty prompt provided"}
-            self.set_state("deliberating")
+            self.set_state("deliberating", command=text, intent="AGENT_DELIBERATE")
+            self.sound.deliberating()
             res = self.system2.query(text, speak=speak)
-            self.set_state("idle")
+            self.last_command = text
+            self.last_result = res
+            self.set_state("executing", command=text, action="Spoke response", intent="AGENT_DELIBERATE", response=res.get("response"))
+
+            def _reset_agent():
+                time.sleep(2.0)
+                self.set_state("idle")
+            threading.Thread(target=_reset_agent, daemon=True).start()
+
             return {"status": "ok", "result": res}
 
         elif action == "speak":
@@ -125,9 +189,137 @@ class JarvisDaemon:
                 "error": f"Unknown voice: {voice}. Choose from: {list(AVAILABLE_VOICES.keys())}",
             }
 
+        elif action == "capture_screen":
+            mode = req.get("mode", "fullscreen")
+            path, lat = self.vision.capture_screen(mode=mode)
+            if path:
+                return {"status": "ok", "path": path, "latency_ms": lat}
+            return {"status": "error", "error": "Screen capture failed"}
+
+        elif action == "agent_vision":
+            text = req.get("text", "Describe what is on my screen").strip()
+            mode = req.get("mode", "fullscreen")
+            speak = req.get("speak", True)
+            self.set_state("deliberating", command=text, intent="VISION_PERCEIVE")
+            self.sound.deliberating()
+            res = self.system2.query_vision(text, speak=speak, mode=mode)
+            self.last_command = text
+            self.last_result = res
+            self.set_state("executing", command=text, action="Screen analyzed", intent="VISION_PERCEIVE", response=res.get("response"))
+
+            def _reset_vis():
+                time.sleep(2.0)
+                self.set_state("idle")
+            threading.Thread(target=_reset_vis, daemon=True).start()
+
+            return {"status": "ok", "result": res}
+
+        elif action == "play_sound":
+            name = req.get("name", "listening")
+            self.sound.play(name)
+            return {"status": "ok", "sound": name}
+
+        elif action == "mouse_move":
+            x = int(req.get("x", 0))
+            y = int(req.get("y", 0))
+            smooth = req.get("smooth", True)
+            duration = float(req.get("duration_ms", 240.0))
+            ok = self.input.move_cursor_to(x, y, smooth=smooth, duration_ms=duration)
+            return {"status": "ok" if ok else "error", "x": x, "y": y}
+
+        elif action == "mouse_click":
+            button = req.get("button", "left")
+            double = req.get("double", False)
+            x = req.get("x")
+            y = req.get("y")
+            pos = (int(x), int(y)) if (x is not None and y is not None) else None
+            ok = self.input.click(button=button, double=double, target_pos=pos)
+            return {"status": "ok" if ok else "error"}
+
+        elif action == "keyboard_type":
+            text = req.get("text", "")
+            delay_ms = int(req.get("delay_ms", 25))
+            ok = self.input.type_text(text, delay_ms=delay_ms)
+            return {"status": "ok" if ok else "error"}
+
+        elif action == "locate_and_click":
+            target = req.get("target", "").strip()
+            button = req.get("button", "left")
+            double = req.get("double", False)
+            if not target:
+                return {"status": "error", "error": "Empty target provided"}
+            self.set_state("deliberating", command=f"click {target}", intent="VISUAL_CLICK")
+            res = self.dispatcher.visual.locate_and_click(target, button=button, double=double)
+            action_desc = f"{'double ' if double else ''}{button} click {target}"
+            self.set_state("executing", command=f"click {target}", action=action_desc, intent="VISUAL_CLICK", confidence=1.0)
+            if res.get("success"):
+                self.sound.success()
+            else:
+                self.sound.error()
+
+            def _reset_click():
+                time.sleep(1.8)
+                self.set_state("idle")
+            threading.Thread(target=_reset_click, daemon=True).start()
+            return {"status": "ok", "result": res}
+
+        elif action == "top_processes":
+            by = req.get("by", "cpu")
+            count = int(req.get("count", 3))
+            res = self.dispatcher.system.get_top_processes(by=by, count=count)
+            return {"status": "ok", "result": res}
+
+        elif action == "list_apps":
+            apps = self.dispatcher.apps.list_apps()
+            return {"status": "ok", "apps": apps}
+
+        elif action == "close_app":
+            app_name = req.get("app", "").strip()
+            if not app_name:
+                return {"status": "error", "error": "No app name specified"}
+            res = self.dispatcher.system.close_app(app_name)
+            return {"status": "ok", "result": res}
+
+        elif action == "system_control":
+            sub = req.get("sub", "")
+            if sub in ("shutdown", "reboot", "suspend", "lock", "logout"):
+                res = self.dispatcher.system.power_action(sub)
+            elif sub == "battery":
+                res = self.dispatcher.system.get_battery_status()
+            elif sub == "disk":
+                res = self.dispatcher.system.get_disk_space()
+            elif sub == "ram":
+                res = self.dispatcher.system.get_ram_status()
+            elif sub == "ip":
+                res = self.dispatcher.system.get_local_ip()
+            elif sub == "read_clipboard":
+                res = self.dispatcher.system.read_clipboard()
+            elif sub == "clear_clipboard":
+                res = self.dispatcher.system.clear_clipboard()
+            elif sub == "time":
+                res = self.dispatcher.system.get_time_date()
+            else:
+                return {"status": "error", "error": f"Unknown system control: {sub}"}
+            return {"status": "ok", "result": res}
+
+        elif action == "demo_hud":
+            def _run_demo():
+                self.sound.listening()
+                self.set_state("listening", command="")
+                time.sleep(1.2)
+                self.set_state("transcribing", command="switch to workspace 2")
+                time.sleep(0.8)
+                self.sound.success()
+                self.set_state("executing", command="switch to workspace 2", action="workspace 2", intent="HYPR_WORKSPACE", confidence=1.0)
+                time.sleep(2.2)
+                self.set_state("idle")
+            threading.Thread(target=_run_demo, daemon=True).start()
+            return {"status": "ok", "message": "HUD demo running"}
+
         elif action == "record_start":
             ok = self.voxtype.start_recording()
             if ok:
+                self.sound.listening()
                 self.set_state("recording")
                 return {"status": "ok", "state": "recording"}
             return {"status": "error", "error": "Failed to start Voxtype recording"}
@@ -141,6 +333,7 @@ class JarvisDaemon:
             else:
                 ok = self.voxtype.start_recording()
                 if ok:
+                    self.sound.listening()
                     self.set_state("recording")
                     return {"status": "ok", "state": "recording"}
                 return {"status": "error", "error": "Failed to start Voxtype recording"}
@@ -156,21 +349,36 @@ class JarvisDaemon:
         text = self.voxtype.wait_for_transcription(timeout_sec=6.0)
 
         if not text:
-            self.set_state("idle")
+            self.sound.error()
+            self.set_state("error", command="No speech detected")
+            def _reset_err():
+                time.sleep(1.2)
+                self.set_state("idle")
+            threading.Thread(target=_reset_err, daemon=True).start()
             return {
                 "status": "warning",
                 "state": "idle",
                 "message": "No speech detected or transcription timed out",
             }
 
-        self.set_state("executing")
         self.last_command = text
         res = self.dispatcher.dispatch_text(text)
         self.last_result = res
+        intent = res.get("intent", "")
+        action_name = res.get("action", "")
+        confidence = res.get("confidence", 1.0)
+
+        self.set_state("executing", command=text, action=action_name, intent=intent, confidence=confidence)
+
+        # Play affirmative sound cue for reflex completion
+        if res.get("success") and res.get("intent") != "ESCALATE_GENERATIVE":
+            self.sound.success()
+        elif not res.get("matched"):
+            self.sound.error()
 
         # If System 2 requires clarification, transition to clarifying and rearm Voxtype
         if res.get("requires_clarification"):
-            self.set_state("clarifying")
+            self.set_state("clarifying", command=text, response=res.get("response"))
             self.voxtype.start_recording()
             return {
                 "status": "ok",
@@ -180,7 +388,10 @@ class JarvisDaemon:
                 "clarification_prompt": res.get("response"),
             }
 
-        self.set_state("idle")
+        def _reset_voice():
+            time.sleep(1.8)
+            self.set_state("idle")
+        threading.Thread(target=_reset_voice, daemon=True).start()
         return {
             "status": "ok",
             "state": "idle",

@@ -5,7 +5,7 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "omarchy.jarvis"
+  moduleName: "eddie.jarvis"
 
   readonly property var jarvisService: bar && bar.shell
       ? bar.shell.serviceFor(moduleName)
@@ -115,7 +115,7 @@ BarWidget {
   }
 
   // Tooltip
-  ToolTip {
+  PanelToolTip {
     id: tip
     visible: chipMouse.containsMouse
     text: {

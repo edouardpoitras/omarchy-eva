@@ -66,9 +66,26 @@ def send_ipc(action: str, params: Optional[Dict[str, Any]] = None, timeout: floa
     return None
 
 
+def is_daemon_alive() -> bool:
+    """Check if daemon is currently connected and responding on socket."""
+    if not os.path.exists(SOCKET_PATH):
+        return False
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(0.3)
+            s.connect(SOCKET_PATH)
+            return True
+    except (ConnectionRefusedError, socket.timeout, OSError):
+        try:
+            os.remove(SOCKET_PATH)
+        except OSError:
+            pass
+        return False
+
+
 def ensure_daemon():
     """Start daemon in background if not already active."""
-    if not os.path.exists(SOCKET_PATH):
+    if not is_daemon_alive():
         daemon_bin = os.path.join(REPO_ROOT, "bin", "omarchy-jarvis-daemon")
         subprocess.Popen(
             [VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable, daemon_bin],
@@ -76,8 +93,8 @@ def ensure_daemon():
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
-        for _ in range(20):
-            if os.path.exists(SOCKET_PATH):
+        for _ in range(60):
+            if is_daemon_alive():
                 break
             time.sleep(0.05)
 
@@ -271,6 +288,330 @@ def cmd_voices():
         print(f"{vid:<14} {meta['name']:<12} {meta['accent']:<12} {meta['gender']:<8} {is_def}")
 
 
+def cmd_see(args: list[str]):
+    """Inspect current screen with multimodal vision agent and speak response."""
+    prompt = " ".join(args).strip() or "Describe what you see on my screen."
+    ensure_daemon()
+    print(f"👀 Jarvis inspecting screen: \"{prompt}\"...")
+
+    resp = send_ipc("agent_vision", {"text": prompt, "speak": True}, timeout=25.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        print(f"📸 Frame: {res.get('image_path')} (capture: {res.get('vision_latency_ms', 0)}ms)")
+        print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+        print(f"   \"{res.get('response')}\"")
+        return
+
+    from core.system2_agent import System2Agent
+    agent = System2Agent()
+    res = agent.query_vision(prompt, speak=True, block_speech=True)
+    print(f"📸 Frame: {res.get('image_path')} (capture: {res.get('vision_latency_ms', 0)}ms)")
+    print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+    print(f"   \"{res.get('response')}\"")
+
+
+def cmd_screenshot(args: list[str]):
+    """Capture instant high-speed screenshot."""
+    mode = "active_window" if ("--window" in args or "-w" in args) else "fullscreen"
+    resp = send_ipc("capture_screen", {"mode": mode}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        print(f"📸 Screenshot ({mode}): {resp.get('path')} ({resp.get('latency_ms', 0)}ms)")
+        return
+
+    from core.vision_capture import VisionCapture
+    vc = VisionCapture()
+    path, lat = vc.capture_screen(mode=mode)
+    if path:
+        print(f"📸 Screenshot ({mode}): {path} ({lat}ms)")
+    else:
+        print("Error capturing screenshot.")
+
+
+def cmd_move(args: list[str]):
+    """Move cursor with subtle human-like ease-out delay."""
+    if len(args) < 2:
+        print("Usage: omarchy-jarvis move <x> <y> [--instant]")
+        sys.exit(1)
+
+    try:
+        x, y = int(args[0]), int(args[1])
+    except ValueError:
+        print("Error: x and y must be integer pixel coordinates.")
+        sys.exit(1)
+
+    smooth = "--instant" not in args
+    resp = send_ipc("mouse_move", {"x": x, "y": y, "smooth": smooth}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        print(f"🖱️ Cursor moved to ({x}, {y}) [smooth={smooth}]")
+        return
+
+    from core.input_controller import InputController
+    inp = InputController()
+    inp.move_cursor_to(x, y, smooth=smooth)
+    print(f"🖱️ Cursor moved to ({x}, {y}) [smooth={smooth}]")
+
+
+def cmd_click(args: list[str]):
+    """Click mouse at current coordinate, specified (x, y), or visual UI element target."""
+    button = "right" if "--right" in args else ("middle" if "--middle" in args else "left")
+    double = "--double" in args
+
+    coords = [a for a in args if not a.startswith("--")]
+    pos = None
+    if len(coords) >= 2:
+        try:
+            pos = (int(coords[0]), int(coords[1]))
+        except ValueError:
+            pass
+
+    # If non-numeric target passed (e.g. "omarchy-jarvis click 'About'" or "omarchy-jarvis click red button")
+    if pos is None and coords:
+        target = " ".join(coords).strip()
+        ensure_daemon()
+        resp = send_ipc("locate_and_click", {"target": target, "button": button, "double": double}, timeout=20.0)
+        if resp and resp.get("status") == "ok":
+            res = resp["result"]
+            if res.get("success"):
+                action_str = "Double-clicked" if double else ("Right-clicked" if button == "right" else "Clicked")
+                print(f"🎯 {action_str} '{target}' at ({res.get('x')}, {res.get('y')}) via {res.get('method')} ({res.get('latency_ms')}ms)")
+                if res.get("speech"):
+                    print(f"   🗣️ Spoken: \"{res['speech']}\"")
+            else:
+                print(f"❌ Failed to locate '{target}': {res.get('error')}")
+            return
+
+        from core.visual_grounding import VisualGrounding
+        vg = VisualGrounding()
+        res = vg.locate_and_click(target, button=button, double=double)
+        if res.get("success"):
+            action_str = "Double-clicked" if double else ("Right-clicked" if button == "right" else "Clicked")
+            print(f"🎯 {action_str} '{target}' at ({res.get('x')}, {res.get('y')}) via {res.get('method')} ({res.get('latency_ms')}ms)")
+            if res.get("speech"):
+                print(f"   🗣️ Spoken: \"{res['speech']}\"")
+        else:
+            print(f"❌ Failed to locate '{target}': {res.get('error')}")
+        return
+
+    x_val = pos[0] if pos else None
+    y_val = pos[1] if pos else None
+
+    resp = send_ipc("mouse_click", {"button": button, "double": double, "x": x_val, "y": y_val}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        target_str = f" at {pos}" if pos else ""
+        action_str = f"Double-clicked {button}" if double else f"Clicked {button}"
+        print(f"🖱️ {action_str}{target_str}")
+        return
+
+    from core.input_controller import InputController
+    inp = InputController()
+    inp.click(button=button, double=double, target_pos=pos)
+    target_str = f" at {pos}" if pos else ""
+    action_str = f"Double-clicked {button}" if double else f"Clicked {button}"
+    print(f"🖱️ {action_str}{target_str}")
+
+
+def cmd_top(args: list[str]):
+    """Show top processes by CPU or memory with instant spoken response."""
+    by = "memory" if any(a in ("--memory", "--ram", "-m", "ram", "mem", "memory") for a in args) else "cpu"
+    count = 3
+    for i, a in enumerate(args):
+        if a in ("--count", "-n") and i + 1 < len(args):
+            try:
+                count = int(args[i + 1])
+            except ValueError:
+                pass
+        elif a.isdigit():
+            count = int(a)
+
+    resp = send_ipc("top_processes", {"by": by, "count": count}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        print(f"📊 Top {len(res.get('processes', []))} processes by {res.get('by')}:")
+        for p in res.get("processes", []):
+            val = p.get("cpu") if res.get("by") == "CPU" else p.get("mem")
+            print(f"   • {p.get('name'):<22} {val:>5.1f}%")
+        if res.get("speech"):
+            print(f"   🗣️ Spoken: \"{res['speech']}\"")
+        return
+
+    from core.system_control import SystemControl
+    sc = SystemControl()
+    res = sc.get_top_processes(by=by, count=count)
+    print(f"📊 Top {len(res.get('processes', []))} processes by {res.get('by')}:")
+    for p in res.get("processes", []):
+        val = p.get("cpu") if res.get("by") == "CPU" else p.get("mem")
+        print(f"   • {p.get('name'):<22} {val:>5.1f}%")
+    if res.get("speech"):
+        print(f"   🗣️ Spoken: \"{res['speech']}\"")
+
+
+def cmd_apps():
+    """List indexed desktop applications installed on Omarchy."""
+    resp = send_ipc("list_apps", timeout=3.0)
+    apps = resp.get("apps", []) if (resp and resp.get("status") == "ok") else None
+    if apps is None:
+        from core.app_indexer import AppIndexer
+        ai = AppIndexer()
+        apps = ai.list_apps()
+
+    print(f"📱 Indexed Applications ({len(apps)} found):")
+    print(f"{'Name':<32} {'ID':<28} {'Generic / Exec'}")
+    print("-" * 80)
+    for a in apps:
+        gen = a.get("generic") or a.get("exec", "")[:32]
+        print(f"{a.get('name', ''):<32} {a.get('id', ''):<28} {gen}")
+
+
+def cmd_close(args: list[str]):
+    """Close a specific application window or the currently active window."""
+    target = " ".join(args).strip() or "active"
+
+    resp = send_ipc("close_app", {"app": target}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        if res.get("success"):
+            print(f"🚪 {res.get('message', f'Closed {target}')}")
+        else:
+            print(f"❌ Failed to close {target}: {res.get('error')}")
+        return
+
+    from core.system_control import SystemControl
+    sc = SystemControl()
+    res = sc.close_app(target)
+    if res.get("success"):
+        print(f"🚪 {res.get('message', f'Closed {target}')}")
+    else:
+        print(f"❌ Failed to close {target}: {res.get('error')}")
+
+
+def cmd_system(args: list[str]):
+    """Hardware telemetry and power actions (battery, disk, ram, ip, time, shutdown, reboot, suspend, lock, logout)."""
+    sub = args[0].lower() if args else "status"
+    if sub in ("shutdown", "poweroff", "turn off"):
+        sub = "shutdown"
+    elif sub in ("reboot", "restart"):
+        sub = "reboot"
+    elif sub in ("sleep", "suspend"):
+        sub = "suspend"
+    elif sub in ("lock", "lockscreen"):
+        sub = "lock"
+    elif sub in ("logout", "exit"):
+        sub = "logout"
+    elif sub in ("mem", "ram", "memory"):
+        sub = "ram"
+    elif sub in ("storage", "disk", "space"):
+        sub = "disk"
+    elif sub in ("power", "battery", "bat"):
+        sub = "battery"
+    elif sub in ("network", "ip"):
+        sub = "ip"
+    elif sub in ("clock", "time", "date"):
+        sub = "time"
+
+    resp = send_ipc("system_control", {"sub": sub}, timeout=5.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        if res.get("speech"):
+            print(f"⚡ System [{sub}]: {res.get('speech')}")
+        else:
+            print(f"⚡ System [{sub}]: {res}")
+        return
+
+    from core.system_control import SystemControl
+    sc = SystemControl()
+    if sub in ("shutdown", "reboot", "suspend", "lock", "logout"):
+        res = sc.power_action(sub)
+    elif sub == "battery":
+        res = sc.get_battery_status()
+    elif sub == "disk":
+        res = sc.get_disk_space()
+    elif sub == "ram":
+        res = sc.get_ram_status()
+    elif sub == "ip":
+        res = sc.get_local_ip()
+    elif sub == "time":
+        res = sc.get_time_date()
+    else:
+        print("Usage: omarchy-jarvis system <battery|disk|ram|ip|time|shutdown|reboot|suspend|lock|logout>")
+        return
+
+    if res.get("speech"):
+        print(f"⚡ System [{sub}]: {res.get('speech')}")
+    else:
+        print(f"⚡ System [{sub}]: {res}")
+
+
+def cmd_clipboard(args: list[str]):
+    """Read or clear Wayland system clipboard."""
+    sub = args[0].lower() if args else "read"
+    act = "clear_clipboard" if sub in ("clear", "empty", "wipe") else "read_clipboard"
+
+    resp = send_ipc("system_control", {"sub": act}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        res = resp["result"]
+        if act == "clear_clipboard":
+            print("📋 Clipboard cleared.")
+        else:
+            print(f"📋 Clipboard ({len(res.get('text', ''))} chars): {res.get('text', '')}")
+            if res.get("speech"):
+                print(f"   🗣️ Spoken: \"{res['speech']}\"")
+        return
+
+    from core.system_control import SystemControl
+    sc = SystemControl()
+    if act == "clear_clipboard":
+        res = sc.clear_clipboard()
+        print("📋 Clipboard cleared.")
+    else:
+        res = sc.read_clipboard()
+        print(f"📋 Clipboard ({len(res.get('text', ''))} chars): {res.get('text', '')}")
+        if res.get("speech"):
+            print(f"   🗣️ Spoken: \"{res['speech']}\"")
+
+
+def cmd_type(args: list[str]):
+    """Type text with subtle human keystroke cadence."""
+    if not args:
+        print("Usage: omarchy-jarvis type <text...>")
+        sys.exit(1)
+
+    text = " ".join(args)
+    resp = send_ipc("keyboard_type", {"text": text, "delay_ms": 25}, timeout=10.0)
+    if resp and resp.get("status") == "ok":
+        print(f"⌨️ Typed: \"{text}\"")
+        return
+
+    from core.input_controller import InputController
+    inp = InputController()
+    inp.type_text(text, delay_ms=25)
+    print(f"⌨️ Typed: \"{text}\"")
+
+
+def cmd_sound(args: list[str]):
+    """Play acoustic earcon cue (listening, success, deliberate, error)."""
+    name = args[0] if args else "listening"
+    resp = send_ipc("play_sound", {"name": name}, timeout=2.0)
+    if resp and resp.get("status") == "ok":
+        print(f"🔊 Played acoustic earcon: {name}")
+        return
+
+    from core.soundscape import Soundscape
+    s = Soundscape()
+    s.play(name)
+    print(f"🔊 Played acoustic earcon: {name}")
+
+
+def cmd_hud(args: list[str]):
+    """Demonstrate floating Arc-Reactor HUD overlay."""
+    print("✨ Triggering Jarvis HUD demonstration...")
+    ensure_daemon()
+    resp = send_ipc("demo_hud", timeout=2.0)
+    if resp and resp.get("status") == "ok":
+        print("✨ HUD active: check your screen for the floating Arc-Reactor overlay.")
+    else:
+        print("Jarvis daemon not active. Run 'omarchy-jarvis-daemon' or 'omarchy-jarvis trigger'.")
+
+
 def cmd_status():
     """Show daemon status and last executed command."""
     resp = send_ipc("get_status", timeout=1.0)
@@ -317,10 +658,26 @@ Usage:
   omarchy-jarvis record-stop           Stop voice capture & execute (push-to-talk release)
   omarchy-jarvis exec <command...>     Directly execute command text
   omarchy-jarvis ask <prompt...>       Deliberative System 2 reasoning with spoken reply
+  omarchy-jarvis see [prompt...]       Inspect screen with vision agent and speak response
   omarchy-jarvis speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
   omarchy-jarvis voices                List available Kokoro voices
+  omarchy-jarvis sound [name]          Play acoustic earcon (listening, success, deliberate, error)
+  omarchy-jarvis hud                   Demonstrate floating Arc-Reactor HUD overlay
   omarchy-jarvis classify <text...>    Evaluate Laya decision model & calibrated confidence
   omarchy-jarvis status                Show daemon status
+
+Reflex Desktop Controls & Telemetry:
+  omarchy-jarvis apps                  List indexed desktop applications
+  omarchy-jarvis close [app_name]      Close specified application or active window
+  omarchy-jarvis top [--by cpu|memory] Show top resource-consuming processes
+  omarchy-jarvis system <action>       Hardware telemetry & power (battery, disk, ram, ip, shutdown...)
+  omarchy-jarvis clipboard [read|clear] Read or clear Wayland clipboard
+
+Screen Perception & Virtual Input:
+  omarchy-jarvis screenshot [--window] Take sub-35ms screenshot (.cache/jarvis/screen.jpg)
+  omarchy-jarvis move <x> <y>          Move cursor with subtle ease-out delay
+  omarchy-jarvis click <target|x y>    Click visual UI element or (x, y) coordinates
+  omarchy-jarvis type <text...>        Type text with natural human keystroke cadence
 
 Machine Learning & Model Tuning:
   omarchy-jarvis generate              Generate training dataset from schema
@@ -346,6 +703,30 @@ def main():
         cmd_exec(sys.argv[2:])
     elif cmd in ("ask", "agent", "query"):
         cmd_ask(sys.argv[2:])
+    elif cmd in ("see", "vision", "look"):
+        cmd_see(sys.argv[2:])
+    elif cmd in ("screenshot", "capture", "shot"):
+        cmd_screenshot(sys.argv[2:])
+    elif cmd in ("move", "mousemove"):
+        cmd_move(sys.argv[2:])
+    elif cmd in ("click", "mouseclick"):
+        cmd_click(sys.argv[2:])
+    elif cmd == "top":
+        cmd_top(sys.argv[2:])
+    elif cmd in ("apps", "list-apps"):
+        cmd_apps()
+    elif cmd in ("close", "kill-app", "quit-app"):
+        cmd_close(sys.argv[2:])
+    elif cmd in ("system", "sys", "power"):
+        cmd_system(sys.argv[2:])
+    elif cmd in ("clipboard", "clip"):
+        cmd_clipboard(sys.argv[2:])
+    elif cmd in ("type", "keystroke"):
+        cmd_type(sys.argv[2:])
+    elif cmd in ("sound", "earcon", "play"):
+        cmd_sound(sys.argv[2:])
+    elif cmd in ("hud", "overlay"):
+        cmd_hud(sys.argv[2:])
     elif cmd == "speak":
         cmd_speak(sys.argv[2:])
     elif cmd == "voices":

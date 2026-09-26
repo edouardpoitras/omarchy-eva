@@ -13,6 +13,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from core.tts_kokoro import KokoroTTS
+from core.vision_capture import VisionCapture
 
 
 def strip_ansi_and_banners(text: str) -> str:
@@ -49,6 +50,7 @@ class System2Agent:
         self.tts = tts or (KokoroTTS(lazy_init=True) if enable_tts else None)
         self.enable_tts = enable_tts
         self.agent_name = agent_name or self._detect_default_agent()
+        self.vision = VisionCapture()
 
         # Multi-turn conversational memory
         self.history: List[Dict[str, str]] = []
@@ -176,6 +178,22 @@ Guidelines for Spoken Output:
         block_speech: bool = False,
     ) -> Dict[str, Any]:
         """Execute deliberative reasoning over user voice command using Omarchy Agent CLI."""
+        # Detect if user is asking to visually inspect the screen
+        visual_triggers = [
+            "what's on my screen",
+            "what is on my screen",
+            "what do you see",
+            "look at my screen",
+            "look at the screen",
+            "read my screen",
+            "read this error",
+            "what is displayed",
+            "describe the screen",
+            "see this",
+        ]
+        if any(trig in user_text.lower() for trig in visual_triggers):
+            return self.query_vision(user_text, speak=speak, block_speech=block_speech)
+
         t_start = time.perf_counter()
         telemetry = self.get_desktop_telemetry()
         system_prompt = self.format_system_prompt(telemetry)
@@ -246,6 +264,80 @@ Guidelines for Spoken Output:
             "prompt": user_text,
             "response": response,
             "requires_clarification": requires_clarification,
+            "latency_ms": latency_ms,
+            "telemetry": telemetry,
+            "speech": speech_result,
+        }
+
+    def query_vision(
+        self,
+        user_text: str,
+        speak: bool = True,
+        block_speech: bool = False,
+        mode: str = "fullscreen",
+    ) -> Dict[str, Any]:
+        """Capture screen framebuffer and query multimodal agent with attached image."""
+        t_start = time.perf_counter()
+        img_path, vis_latency = self.vision.capture_screen(mode=mode)
+        telemetry = self.get_desktop_telemetry()
+        system_prompt = self.format_system_prompt(telemetry)
+
+        # Build prompt with image reference
+        full_prompt = (
+            f"{system_prompt}\n"
+            f"Attached Screen Capture: @{img_path}\n\n"
+            f"User request: {user_text}\n"
+            "Inspect the attached image carefully and provide a concise, direct spoken response (1-3 sentences).\n"
+            "Jarvis:"
+        )
+
+        raw_output = ""
+        agent_used = self.agent_name
+
+        try:
+            if self.agent_name == "gemini":
+                cmd = ["gemini", "-p", full_prompt, "--yolo"]
+            elif self.agent_name == "claude":
+                cmd = ["claude", "-p", full_prompt, "--allow-dangerously-skip-permissions"]
+            else:
+                cmd = ["gemini", "-p", full_prompt, "--yolo"]
+
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=20.0,
+            )
+            raw_output = proc.stdout if proc.returncode == 0 else (proc.stdout or proc.stderr)
+        except subprocess.TimeoutExpired:
+            raw_output = "I apologize, sir. The vision analysis query timed out."
+        except Exception as e:
+            raw_output = f"I encountered an error analyzing the screen image: {e}"
+
+        response = strip_ansi_and_banners(raw_output)
+        if not response:
+            response = "I looked at your screen, sir, but could not discern any specific details."
+
+        latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
+
+        # Record into conversation history
+        self.history.append({"role": "user", "content": user_text})
+        self.history.append({"role": "assistant", "content": response})
+        if len(self.history) > self.max_history:
+            self.history = self.history[-self.max_history:]
+
+        # Spoken synthesis via Kokoro TTS
+        speech_result = None
+        if speak and self.tts:
+            speech_result = self.tts.speak(response, block=block_speech)
+
+        return {
+            "status": "ok",
+            "agent": agent_used,
+            "prompt": user_text,
+            "response": response,
+            "image_path": img_path,
+            "vision_latency_ms": vis_latency,
             "latency_ms": latency_ms,
             "telemetry": telemetry,
             "speech": speech_result,
