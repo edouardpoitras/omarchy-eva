@@ -47,13 +47,13 @@ class VoxtypeBridge:
                 pass
 
         try:
-            subprocess.run(
-                ["voxtype", "record", "start", "--output-file", output_file],
+            res = subprocess.run(
+                ["voxtype", "record", "start", f"--file={output_file}", "--no-osd"],
                 capture_output=True,
-                timeout=1.0,
+                timeout=1.5,
                 check=False,
             )
-            return True
+            return res.returncode == 0
         except Exception:
             return False
 
@@ -63,13 +63,13 @@ class VoxtypeBridge:
             return False
 
         try:
-            subprocess.run(
+            res = subprocess.run(
                 ["voxtype", "record", "stop"],
                 capture_output=True,
-                timeout=1.0,
+                timeout=1.5,
                 check=False,
             )
-            return True
+            return res.returncode == 0
         except Exception:
             return False
 

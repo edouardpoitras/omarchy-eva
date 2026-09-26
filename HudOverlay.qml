@@ -17,11 +17,12 @@ PanelWindow {
 
   // Status Theme Colors
   readonly property color stateColor: {
-    if (jarvisState === "listening") return "#00f0ff"    // Arc-Reactor Cyan
+    if (jarvisState === "listening" || jarvisState === "recording") return "#00f0ff"    // Arc-Reactor Cyan
     if (jarvisState === "transcribing") return "#ffaa00" // Amber
     if (jarvisState === "deliberating") return "#b366ff" // Purple Resonance
     if (jarvisState === "clarifying") return "#00c3ff"   // Blue Dialog
     if (jarvisState === "executing") return "#00ff88"    // Emerald
+    if (jarvisState === "alert") return "#ff9900"        // Warning Amber / Gold
     if (jarvisState === "error") return "#ff3344"        // Crimson
     return "#00f0ff"
   }
@@ -148,11 +149,12 @@ PanelWindow {
           spacing: 8
           Text {
             text: {
-              if (root.jarvisState === "listening") return "JARVIS // LISTENING"
+              if (root.jarvisState === "listening" || root.jarvisState === "recording") return "JARVIS // LISTENING"
               if (root.jarvisState === "transcribing") return "JARVIS // TRANSCRIBING"
               if (root.jarvisState === "deliberating") return "JARVIS // DELIBERATING"
               if (root.jarvisState === "clarifying") return "JARVIS // CLARIFYING"
               if (root.jarvisState === "executing") return "JARVIS // EXECUTING"
+              if (root.jarvisState === "alert") return "JARVIS // SYSTEM ALERT"
               if (root.jarvisState === "error") return "JARVIS // ERROR"
               return "JARVIS"
             }
@@ -165,7 +167,7 @@ PanelWindow {
 
           // Intent & Confidence Badge
           Rectangle {
-            visible: root.intent !== "" && (root.jarvisState === "executing" || root.jarvisState === "idle")
+            visible: root.intent !== "" && (root.jarvisState === "executing" || root.jarvisState === "idle" || root.jarvisState === "alert")
             height: 14
             width: badgeText.implicitWidth + 8
             radius: 4
@@ -190,9 +192,10 @@ PanelWindow {
           width: parent.width
           elide: Text.ElideRight
           text: {
-            if (root.jarvisState === "listening") return "Awaiting speech..."
+            if (root.jarvisState === "listening" || root.jarvisState === "recording") return "Listening to speech..."
             if (root.jarvisState === "transcribing") return "Analyzing audio waveform..."
             if (root.jarvisState === "deliberating") return root.transcription || "Synthesizing answer..."
+            if (root.jarvisState === "alert") return root.lastCommand || "System warning detected"
             if (root.transcription) return "\"" + root.transcription + "\""
             if (root.lastAction) return root.lastAction
             return "Systems operational"
@@ -220,9 +223,9 @@ PanelWindow {
             color: root.stateColor
             anchors.verticalCenter: parent.verticalCenter
 
-            // Dynamic oscillating height based on sinusoids when listening/speaking
+            // Dynamic oscillating height based on sinusoids when listening/speaking/alerting
             property real phaseOffset: index * 0.45
-            property real activeMultiplier: (root.jarvisState === "listening" || root.jarvisState === "deliberating") ? 1.0 : 0.25
+            property real activeMultiplier: (root.jarvisState === "listening" || root.jarvisState === "recording" || root.jarvisState === "deliberating" || root.jarvisState === "alert") ? 1.0 : 0.25
 
             height: root.isHudActive ? Math.max(4, 24 * activeMultiplier * (0.4 + 0.6 * Math.abs(Math.sin(waveTimer.tick + phaseOffset)))) : 4
 

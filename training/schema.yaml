@@ -29,8 +29,10 @@ intents:
       - "transfer window to workspace {target}"
 
   HYPR_WINDOW:
-    description: "Manipulate active window layout, sizing, or state"
-    actions: [close, fullscreen, float, split]
+    description: "Manipulate active window layout, sizing, direction, scratchpad, or state"
+    actions: [close, fullscreen, float, split, pseudo, scratchpad, focus_dir, swap_dir, move_dir]
+    slots:
+      direction: ["left", "right", "up", "down"]
     templates:
       - "close window"
       - "close this window"
@@ -43,16 +45,33 @@ intents:
       - "float this window"
       - "unfloat window"
       - "toggle window split"
+      - "toggle pseudo"
+      - "pseudo mode"
+      - "focus {direction}"
+      - "swap window {direction}"
+      - "move window {direction}"
+      - "toggle scratchpad"
+      - "scratchpad"
+      - "send to scratchpad"
+      - "move to scratchpad"
 
   HYPR_FOCUS:
-    description: "Focus a running application by name or window class"
+    description: "Focus a running application by name or window class, or launch into target workspace"
     slots:
-      app: ["neovim", "foot", "kitty", "ghostty", "terminal", "browser", "chrome", "firefox", "brave", "obsidian", "spotify", "discord", "slack"]
+      app: ["neovim", "foot", "kitty", "ghostty", "terminal", "browser", "chrome", "firefox", "brave", "obsidian", "spotify", "discord", "slack", "steam", "signal", "calculator", "files", "settings"]
+      target: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     templates:
       - "focus {app}"
       - "bring up {app}"
       - "switch to {app}"
       - "show me {app}"
+      - "where is {app}"
+      - "see {app}"
+      - "see {app} window"
+      - "switch to {app} window"
+      - "open {app} on workspace {target}"
+      - "launch {app} on workspace {target}"
+      - "move {app} to workspace {target}"
 
   MEDIA_CONTROL:
     description: "Control MPRIS and browser media playback (YouTube, Spotify, etc.)"
@@ -72,6 +91,16 @@ intents:
       - "skip song"
       - "previous track"
       - "previous song"
+
+  MEDIA_QUERY:
+    description: "Query active MPRIS playing media information"
+    templates:
+      - "what song is this"
+      - "what track is playing"
+      - "current song"
+      - "current track"
+      - "what is playing"
+      - "what music is this"
 
   AUDIO_CONTROL:
     description: "Adjust PipeWire volume, output muting, and microphone state"
@@ -95,9 +124,45 @@ intents:
       - "unmute microphone"
       - "unmute mic"
 
+  DEVICE_CONTROL:
+    description: "Control hardware radios, notifications, idle inhibitor, and desktop bars"
+    templates:
+      - "toggle wifi"
+      - "turn on wifi"
+      - "turn off wifi"
+      - "enable wifi"
+      - "disable wifi"
+      - "toggle bluetooth"
+      - "turn on bluetooth"
+      - "turn off bluetooth"
+      - "enable bluetooth"
+      - "disable bluetooth"
+      - "toggle dnd"
+      - "toggle do not disturb"
+      - "silence notifications"
+      - "enable do not disturb"
+      - "disable do not disturb"
+      - "stay awake"
+      - "keep screen on"
+      - "allow sleep"
+      - "disable stay awake"
+      - "toggle top bar"
+      - "toggle waybar"
+      - "hide top bar"
+      - "show top bar"
+
+  DIR_SHORTCUT:
+    description: "Open standard user directories in the default file manager"
+    slots:
+      dir: ["downloads", "pictures", "documents", "home", "config"]
+    templates:
+      - "open {dir}"
+      - "open {dir} folder"
+      - "open {dir} directory"
+
   SYSTEM_ACTION:
-    description: "Operating system actions (lock, screenshots, nightlight)"
-    actions: [lock, screenshot_smart, screenshot_fullscreen, toggle_nightlight]
+    description: "Operating system actions (lock, screenshots, nightlight, telemetry, power)"
+    actions: [lock, screenshot_smart, screenshot_fullscreen, toggle_nightlight, uptime, temp, current_ws, list_windows, what_window, top_cpu, top_mem, reboot, poweroff]
     templates:
       - "lock workstation"
       - "lock screen"
@@ -111,6 +176,24 @@ intents:
       - "toggle nightlight"
       - "turn on night light"
       - "turn off night light"
+      - "system uptime"
+      - "how long has the system been on"
+      - "uptime"
+      - "cpu temperature"
+      - "system temperature"
+      - "how hot is the cpu"
+      - "current workspace"
+      - "which workspace am i on"
+      - "list open windows"
+      - "what windows are open"
+      - "what window is this"
+      - "which window is active"
+      - "top cpu processes"
+      - "top memory processes"
+      - "restart computer"
+      - "reboot"
+      - "power off"
+      - "shut down computer"
 
   APP_LAUNCH:
     description: "Launch desktop applications"

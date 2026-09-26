@@ -316,3 +316,199 @@ class SystemControl:
         target = "mon:+1" if direction in ("+1", "next", "right") else "mon:-1"
         res = subprocess.run(["hyprctl", "dispatch", "movewindow", target], capture_output=True, check=False)
         return res.returncode == 0
+
+    # --------------------------------------------------------- Media Metadata Query
+    def get_current_track(self) -> Dict[str, Any]:
+        """Query active D-Bus MPRIS players for currently playing track and artist."""
+        try:
+            res = subprocess.run(
+                ["dbus-send", "--session", "--dest=org.freedesktop.DBus", "--type=method_call",
+                 "--print-reply", "/org/freedesktop/DBus", "org.freedesktop.DBus.ListNames"],
+                capture_output=True, text=True, timeout=1.0, check=False,
+            )
+            players = [line.split('"')[1] for line in res.stdout.splitlines() if "org.mpris.MediaPlayer2." in line]
+            if not players:
+                return {"success": True, "playing": False, "speech": "No active media players detected."}
+
+            for p in players:
+                player_short = p.split(".")[-1].capitalize()
+                # Query Status
+                status_res = subprocess.run(
+                    ["dbus-send", "--session", f"--dest={p}", "--type=method_call", "--print-reply",
+                     "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties.Get",
+                     "string:org.mpris.MediaPlayer2.Player", "string:PlaybackStatus"],
+                    capture_output=True, text=True, timeout=1.0, check=False,
+                )
+                status_match = re.search(r'string\s+"(\w+)"', status_res.stdout)
+                status = status_match.group(1).lower() if status_match else "unknown"
+
+                # Query Metadata
+                meta_res = subprocess.run(
+                    ["dbus-send", "--session", f"--dest={p}", "--type=method_call", "--print-reply",
+                     "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties.Get",
+                     "string:org.mpris.MediaPlayer2.Player", "string:Metadata"],
+                    capture_output=True, text=True, timeout=1.0, check=False,
+                )
+                title_match = re.search(r'dict entry\(\s*string "xesam:title"\s*variant\s*string "([^"]+)"', meta_res.stdout)
+                artist_match = re.search(r'dict entry\(\s*string "xesam:artist"\s*variant\s*array \[\s*string "([^"]+)"', meta_res.stdout)
+
+                title = title_match.group(1).strip() if title_match else ""
+                artist = artist_match.group(1).strip() if artist_match else ""
+
+                if status == "playing":
+                    if title and artist:
+                        speech = f"Currently playing '{title}' by {artist} on {player_short}."
+                    elif title:
+                        speech = f"Currently playing '{title}' on {player_short}."
+                    else:
+                        speech = f"{player_short} is currently playing."
+                    return {"success": True, "playing": True, "player": player_short, "title": title, "artist": artist, "status": status, "speech": speech}
+                elif status == "paused" and title:
+                    speech = f"Playback is currently paused on {player_short} for '{title}'."
+                    return {"success": True, "playing": False, "player": player_short, "title": title, "artist": artist, "status": status, "speech": speech}
+
+            return {"success": True, "playing": False, "speech": "Media playback is currently paused or idle."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not retrieve media playback details."}
+
+    # --------------------------------------------------------- Hardware Diagnostics & Uptime
+    def get_uptime(self) -> Dict[str, Any]:
+        """Read system uptime from /proc/uptime."""
+        try:
+            with open("/proc/uptime", "r", encoding="utf-8") as f:
+                secs = float(f.read().split()[0])
+            days = int(secs // 86400)
+            hours = int((secs % 86400) // 3600)
+            mins = int((secs % 3600) // 60)
+
+            parts = []
+            if days > 0:
+                parts.append(f"{days} day{'s' if days != 1 else ''}")
+            if hours > 0:
+                parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+            parts.append(f"{mins} minute{'s' if mins != 1 else ''}")
+            uptime_str = ", ".join(parts)
+            speech = f"The system has been running for {uptime_str}."
+            return {"success": True, "seconds": secs, "days": days, "hours": hours, "minutes": mins, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not determine system uptime."}
+
+    def get_cpu_temperature(self) -> Dict[str, Any]:
+        """Read CPU temperature from /sys/class/thermal or /sys/class/hwmon."""
+        import glob
+        try:
+            temps = []
+            files = glob.glob("/sys/class/hwmon/hwmon*/temp1_input") + glob.glob("/sys/class/thermal/thermal_zone*/temp")
+            for f in files:
+                try:
+                    with open(f, "r", encoding="utf-8") as tf:
+                        raw = float(tf.read().strip())
+                        c = raw / 1000.0 if raw > 1000 else raw
+                        if 10.0 < c < 115.0:
+                            temps.append(c)
+                except Exception:
+                    pass
+            if not temps:
+                return {"success": False, "speech": "Thermal sensors are unavailable."}
+            avg_temp = round(sum(temps) / len(temps), 1)
+            speech = f"Current average hardware temperature is {avg_temp} degrees Celsius."
+            return {"success": True, "temperature_c": avg_temp, "sensors_count": len(temps), "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not read temperature sensors."}
+
+    # --------------------------------------------------------- Device & Network Controls
+    def toggle_wifi(self, action: str = "toggle") -> Dict[str, Any]:
+        """Turn WiFi on, off, or toggle via nmcli."""
+        try:
+            if action in ("on", "enable"):
+                subprocess.run(["nmcli", "radio", "wifi", "on"], check=True, timeout=2.0)
+                speech = "Wi-Fi is now enabled."
+            elif action in ("off", "disable"):
+                subprocess.run(["nmcli", "radio", "wifi", "off"], check=True, timeout=2.0)
+                speech = "Wi-Fi has been disabled."
+            else:
+                proc = subprocess.run(["nmcli", "radio", "wifi"], capture_output=True, text=True, check=False)
+                is_on = "enabled" in proc.stdout.lower()
+                new_state = "off" if is_on else "on"
+                subprocess.run(["nmcli", "radio", "wifi", new_state], check=True, timeout=2.0)
+                speech = f"Wi-Fi is now {'disabled' if is_on else 'enabled'}."
+            return {"success": True, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Failed to modify Wi-Fi state: {e}"}
+
+    def toggle_bluetooth(self, action: str = "toggle") -> Dict[str, Any]:
+        """Turn Bluetooth on, off, or toggle via bluetoothctl."""
+        try:
+            if action in ("on", "enable"):
+                subprocess.run(["bluetoothctl", "power", "on"], check=True, timeout=2.0)
+                speech = "Bluetooth is now enabled."
+            elif action in ("off", "disable"):
+                subprocess.run(["bluetoothctl", "power", "off"], check=True, timeout=2.0)
+                speech = "Bluetooth has been disabled."
+            else:
+                proc = subprocess.run(["bluetoothctl", "show"], capture_output=True, text=True, check=False)
+                is_on = "powered: yes" in proc.stdout.lower()
+                new_state = "off" if is_on else "on"
+                subprocess.run(["bluetoothctl", "power", new_state], check=True, timeout=2.0)
+                speech = f"Bluetooth is now {'disabled' if is_on else 'enabled'}."
+            return {"success": True, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Failed to modify Bluetooth state: {e}"}
+
+    def toggle_dnd(self, action: str = "toggle") -> Dict[str, Any]:
+        """Toggle do-not-disturb notification silencing in Omarchy."""
+        try:
+            subprocess.run(["omarchy-toggle-notification-silencing"], check=False, timeout=2.0)
+            return {"success": True, "speech": "Do not disturb mode toggled."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not toggle notification silencing."}
+
+    def toggle_idle(self, action: str = "toggle") -> Dict[str, Any]:
+        """Toggle stay-awake or normal idle behavior via omarchy-toggle-idle."""
+        try:
+            cmd = ["omarchy-toggle-idle"]
+            if action in ("stay-awake", "awake", "on"):
+                cmd.append("stay-awake")
+                speech = "Stay-awake mode activated. The screen will not idle or lock."
+            elif action in ("allow-idle", "idle", "off"):
+                cmd.append("allow-idle")
+                speech = "Standard idle behavior restored."
+            else:
+                cmd.append("toggle")
+                speech = "System idle stay-awake behavior toggled."
+            subprocess.run(cmd, check=False, timeout=2.0)
+            return {"success": True, "speech": speech}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not toggle idle state."}
+
+    def toggle_bar(self) -> Dict[str, Any]:
+        """Toggle Omarchy top bar visibility."""
+        try:
+            subprocess.run(["omarchy-toggle-bar"], check=False, timeout=2.0)
+            return {"success": True, "speech": "Top bar toggled."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": "Could not toggle top bar."}
+
+    def open_directory(self, target: str) -> Dict[str, Any]:
+        """Open standard user folders in default file manager."""
+        t_clean = target.lower().strip()
+        home = os.path.expanduser("~")
+        dir_map = {
+            "downloads": os.path.join(home, "Downloads"),
+            "pictures": os.path.join(home, "Pictures"),
+            "screenshots": os.path.join(home, "Pictures"),
+            "documents": os.path.join(home, "Documents"),
+            "home": home,
+            "config": os.path.join(home, ".config"),
+            "music": os.path.join(home, "Music"),
+            "videos": os.path.join(home, "Videos"),
+        }
+        dest = dir_map.get(t_clean, home)
+        if not os.path.exists(dest):
+            os.makedirs(dest, exist_ok=True)
+        try:
+            subprocess.Popen(["xdg-open", dest], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return {"success": True, "path": dest, "speech": f"Opening {t_clean} directory."}
+        except Exception as e:
+            return {"success": False, "error": str(e), "speech": f"Could not open {t_clean}."}
+

@@ -569,6 +569,53 @@ def cmd_clipboard(args: list[str]):
             print(f"   🗣️ Spoken: \"{res['speech']}\"")
 
 
+def cmd_awareness():
+    """Display status of background awareness monitors and telemetry."""
+    ensure_daemon()
+    resp = send_ipc("awareness_status", timeout=2.0)
+    if not resp or resp.get("status") != "ok":
+        print("Error: Could not retrieve awareness status from daemon.")
+        return
+
+    data = resp.get("awareness", {})
+    stats = data.get("stats", {})
+    online = data.get("is_online")
+    online_str = "🟢 Online" if online else "🔴 Offline"
+    weather = data.get("last_weather", {})
+    weather_str = f"{weather.get('description', 'Unknown')}, {weather.get('temp_c', '?')}°C" if weather else "N/A"
+
+    print("🛡️ Jarvis Proactive Awareness Engine:")
+    print(f"   Status:        {'Active' if data.get('running') else 'Inactive'}")
+    print(f"   Network:       {online_str}")
+    print(f"   Weather:       {weather_str}")
+    print(f"   CPU Usage:     {stats.get('cpu', 'N/A')}%")
+    print(f"   Available RAM: {stats.get('ram_free_gb', 'N/A')} GB")
+    print(f"   Free Disk:     {stats.get('disk_free_gb', 'N/A')} GB")
+    if stats.get("battery"):
+        b = stats["battery"]
+        print(f"   Battery:       {b.get('capacity')}% ({b.get('status')})")
+
+    last_alerts = data.get("last_alerts", {})
+    if last_alerts:
+        print("\n   Recent Alert History:")
+        now = time.time()
+        for cat, ts in last_alerts.items():
+            elapsed_m = int((now - ts) / 60)
+            print(f"     • {cat:<10} ({elapsed_m}m ago)")
+
+
+def cmd_alert(args: list[str]):
+    """Trigger a proactive test alert with spoken announcement and HUD badge."""
+    msg = " ".join(args).strip() or "Sir, this is a proactive test alert from Jarvis."
+    title = "Jarvis Alert"
+    ensure_daemon()
+    resp = send_ipc("proactive_alert", {"title": title, "message": msg, "speech": msg, "type": "warning"}, timeout=5.0)
+    if resp and resp.get("status") == "ok":
+        print(f"🚨 Dispatched proactive alert: \"{msg}\"")
+    else:
+        print("Error: Failed to dispatch proactive alert.")
+
+
 def cmd_type(args: list[str]):
     """Type text with subtle human keystroke cadence."""
     if not args:
@@ -672,6 +719,8 @@ Reflex Desktop Controls & Telemetry:
   omarchy-jarvis top [--by cpu|memory] Show top resource-consuming processes
   omarchy-jarvis system <action>       Hardware telemetry & power (battery, disk, ram, ip, shutdown...)
   omarchy-jarvis clipboard [read|clear] Read or clear Wayland clipboard
+  omarchy-jarvis awareness             Show background sentinel status (CPU, RAM, network, weather)
+  omarchy-jarvis alert [message...]    Trigger a proactive test alert
 
 Screen Perception & Virtual Input:
   omarchy-jarvis screenshot [--window] Take sub-35ms screenshot (.cache/jarvis/screen.jpg)
@@ -721,6 +770,10 @@ def main():
         cmd_system(sys.argv[2:])
     elif cmd in ("clipboard", "clip"):
         cmd_clipboard(sys.argv[2:])
+    elif cmd in ("awareness", "sentinel", "watchdog"):
+        cmd_awareness()
+    elif cmd in ("alert", "warn", "notify"):
+        cmd_alert(sys.argv[2:])
     elif cmd in ("type", "keystroke"):
         cmd_type(sys.argv[2:])
     elif cmd in ("sound", "earcon", "play"):

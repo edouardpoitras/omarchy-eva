@@ -4,11 +4,13 @@ import json
 import os
 import signal
 import socket
+import subprocess
 import sys
 import threading
 import time
 from typing import Any, Dict, List, Optional
 
+from core.awareness_engine import AwarenessEngine
 from core.dispatcher import CommandDispatcher
 from core.system2_agent import System2Agent
 from core.input_controller import InputController
@@ -39,13 +41,20 @@ class JarvisDaemon:
         self.vision = VisionCapture()
         self.input = InputController()
 
+        self._auto_stop_timer: Optional[threading.Timer] = None
+        self.awareness = AwarenessEngine(
+            alert_callback=self.proactive_alert,
+            query_agent_callback=self.system2.query if self.system2 else None,
+            enabled=True,
+        )
+
         self.state = "idle"
         self.last_command = ""
         self.last_result: Dict[str, Any] = {}
         self.running = False
         self._server_sock: Optional[socket.socket] = None
         self._clients: List[socket.socket] = []
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self.set_state("idle")
 
     def set_state(
@@ -102,6 +111,43 @@ class JarvisDaemon:
         for dead in dead_clients:
             if dead in self._clients:
                 self._clients.remove(dead)
+
+    def proactive_alert(
+        self,
+        title: str,
+        message: str,
+        speech: Optional[str] = None,
+        alert_type: str = "warning",
+        requires_clarification: bool = False,
+    ):
+        """Broadcast proactive spoken alert, display HUD banner, and trigger desktop notification."""
+        spoken_text = speech or message
+        self.sound.deliberating()
+        self.set_state("alert", command=title, action=message, intent=title.upper())
+
+        # 1. Desktop Notification
+        urgency = "critical" if alert_type == "critical" else "normal"
+        try:
+            subprocess.Popen(
+                ["notify-send", "-u", urgency, "-a", "Jarvis", title, message],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+        # 2. Spoken Butler Voice via Kokoro TTS
+        if self.tts:
+            self.tts.speak(spoken_text, block=False)
+
+        # 3. Reset HUD state after message completes
+        def _reset_alert():
+            time.sleep(5.5)
+            with self._lock:
+                if self.state == "alert":
+                    self.set_state("clarifying" if requires_clarification else "idle")
+
+        threading.Thread(target=_reset_alert, daemon=True).start()
 
     def handle_request(self, req: dict) -> dict:
         """Handle incoming IPC JSON request."""
@@ -316,32 +362,65 @@ class JarvisDaemon:
             threading.Thread(target=_run_demo, daemon=True).start()
             return {"status": "ok", "message": "HUD demo running"}
 
+        elif action == "proactive_alert":
+            title = req.get("title", "Jarvis Alert")
+            message = req.get("message", "")
+            speech = req.get("speech")
+            alert_type = req.get("type", "warning")
+            clarification = req.get("requires_clarification", False)
+            self.proactive_alert(title, message, speech=speech, alert_type=alert_type, requires_clarification=clarification)
+            return {"status": "ok"}
+
+        elif action == "awareness_status":
+            if hasattr(self, "awareness") and self.awareness:
+                return {"status": "ok", "awareness": self.awareness.get_status()}
+            return {"status": "error", "error": "Awareness engine not running"}
+
         elif action == "record_start":
+            if self._auto_stop_timer:
+                self._auto_stop_timer.cancel()
+                self._auto_stop_timer = None
+
             ok = self.voxtype.start_recording()
             if ok:
                 self.sound.listening()
-                self.set_state("recording")
-                return {"status": "ok", "state": "recording"}
+                self.set_state("listening", command="")
+
+                # Auto-stop after 8 seconds of continuous recording to prevent accidental stuck recordings
+                def _safety_stop():
+                    if self.state in ("listening", "recording"):
+                        self._stop_and_dispatch()
+
+                self._auto_stop_timer = threading.Timer(8.0, _safety_stop)
+                self._auto_stop_timer.daemon = True
+                self._auto_stop_timer.start()
+
+                return {"status": "ok", "state": "listening"}
             return {"status": "error", "error": "Failed to start Voxtype recording"}
 
         elif action == "record_stop":
+            if self._auto_stop_timer:
+                self._auto_stop_timer.cancel()
+                self._auto_stop_timer = None
             return self._stop_and_dispatch()
 
         elif action == "record_toggle":
-            if self.state == "recording" or self.voxtype.is_recording():
+            if self.state in ("listening", "recording") or self.voxtype.is_recording():
+                if self._auto_stop_timer:
+                    self._auto_stop_timer.cancel()
+                    self._auto_stop_timer = None
                 return self._stop_and_dispatch()
             else:
-                ok = self.voxtype.start_recording()
-                if ok:
-                    self.sound.listening()
-                    self.set_state("recording")
-                    return {"status": "ok", "state": "recording"}
-                return {"status": "error", "error": "Failed to start Voxtype recording"}
+                return self.handle_request({"action": "record_start"})
 
         return {"status": "error", "error": f"Unknown action: {action}"}
 
     def _stop_and_dispatch(self) -> dict:
         """Stop recording, await transcription, and dispatch matching command."""
+        if self._auto_stop_timer:
+            self._auto_stop_timer.cancel()
+            self._auto_stop_timer = None
+
         self.set_state("transcribing")
         self.voxtype.stop_recording()
 
@@ -448,6 +527,7 @@ class JarvisDaemon:
         self._server_sock.listen(10)
         self.running = True
         self.set_state("idle")
+        self.awareness.start()
 
         def shutdown_handler(signum, frame):
             self.stop()
@@ -470,6 +550,13 @@ class JarvisDaemon:
     def stop(self):
         """Stop daemon and cleanup resources."""
         self.running = False
+        if self._auto_stop_timer:
+            try:
+                self._auto_stop_timer.cancel()
+            except Exception:
+                pass
+            self._auto_stop_timer = None
+        self.awareness.stop()
         if self._server_sock:
             try:
                 self._server_sock.close()
