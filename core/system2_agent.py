@@ -12,6 +12,7 @@ import subprocess
 import time
 from typing import Any, Dict, List, Optional
 
+from core.capabilities import capabilities_registry
 from core.tts_kokoro import KokoroTTS
 from core.vision_capture import VisionCapture
 
@@ -150,12 +151,13 @@ class System2Agent:
         return telemetry
 
     def format_system_prompt(self, telemetry: Dict[str, Any]) -> str:
-        """Construct system prompt with situational desktop telemetry."""
+        """Construct system prompt with situational desktop telemetry and grounded capabilities."""
         act = telemetry.get("active_window")
         act_desc = f"{act['title']} (class: {act['class']}, workspace: {act['workspace']})" if act else "Desktop background"
 
         open_wins = telemetry.get("open_windows", [])
         wins_desc = ", ".join([f"{w['class']} ('{w['title'][:30]}')" for w in open_wins[:6]]) or "None"
+        cap_context = capabilities_registry.format_system_prompt_context()
 
         prompt = f"""You are Jarvis, the voice-enabled AI assistant embedded directly into Omarchy Linux running the Hyprland Wayland compositor.
 The user is speaking to you via real-time voice control.
@@ -163,6 +165,8 @@ The user is speaking to you via real-time voice control.
 Current Desktop State:
 - Focused Window: {act_desc}
 - Other Visible Windows: {wins_desc}
+
+{cap_context}
 
 Guidelines for Spoken Output:
 1. Answer directly and concisely. Keep responses conversational and brief (1 to 3 spoken sentences) unless the user specifically asks for long explanations or code.

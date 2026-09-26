@@ -19,14 +19,27 @@ intents:
       - "switch back to former workspace"
 
   HYPR_WINDOW_MOVE:
-    description: "Move the active window to a specific workspace"
+    description: "Move an open window or the active window to another workspace"
     slots:
-      target: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      target: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, "another", "next", "previous"]
+      app: ["spotify", "discord", "chrome", "firefox", "terminal", "ghostty", "neovim", "slack"]
     templates:
       - "move window to workspace {target}"
+      - "move an open window to workspace {target}"
+      - "move open window to workspace {target}"
+      - "move an open window to another workspace"
+      - "move open window to another workspace"
+      - "move window to another workspace"
+      - "move this window to another workspace"
+      - "move active window to another workspace"
+      - "move window to next workspace"
+      - "move window to previous workspace"
       - "send window to desktop {target}"
       - "put this on workspace {target}"
       - "transfer window to workspace {target}"
+      - "move {app} to workspace {target}"
+      - "move {app} to another workspace"
+      - "move {app} window to workspace {target}"
 
   HYPR_WINDOW:
     description: "Manipulate active window layout, sizing, direction, scratchpad, or state"
@@ -275,3 +288,31 @@ intents:
       - "summarize the latest git commits"
       - "can you write a python script for this"
       - "tell me why my sound is not working"
+
+  JARVIS_IDENTITY:
+    description: "Identify Jarvis system identity, architecture, and persona"
+    templates:
+      - "who are you"
+      - "what are you"
+      - "identify yourself"
+      - "tell me about yourself"
+      - "what is jarvis"
+      - "who made you"
+      - "introduce yourself"
+
+  JARVIS_CAPABILITIES:
+    description: "Query overall capabilities, feature overview, or domain-specific breakdowns"
+    slots:
+      domain: ["windows", "workspaces", "apps", "audio", "sound", "hardware", "wifi", "bluetooth", "brightness", "system", "telemetry", "vision", "screen", "awareness", "sentinel", "chaining", "reasoning"]
+    templates:
+      - "what can you do"
+      - "what are you capable of"
+      - "what are your capabilities"
+      - "list capabilities"
+      - "what features do you have"
+      - "what commands do you support"
+      - "help"
+      - "what can you do with {domain}"
+      - "tell me about {domain}"
+      - "{domain} capabilities"
+      - "how does {domain} work"

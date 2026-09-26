@@ -34,13 +34,19 @@ description: >-
 omarchy-jarvis record-start
 omarchy-jarvis record-stop
 
+# Identity & Capabilities Knowledge Base (Central Single Source of Truth)
+omarchy-jarvis info                     # Show Jarvis identity, persona, and architecture
+omarchy-jarvis capabilities             # Matrix of all active domains and registered grammar counts
+omarchy-jarvis capabilities <domain>    # Deep drill-down (audio, windows, hardware, system, vision...)
+
 # Proactive awareness telemetry and alert testing
 omarchy-jarvis awareness
 omarchy-jarvis alert "Sir, all systems operating within normal parameters."
 
-# Toggle recording manually
-
 # Direct command execution (reflex or System 2)
+omarchy-jarvis exec "who are you"                  # Identity overview (<30ms reflex)
+omarchy-jarvis exec "what can you do"              # Capabilities overview (<30ms reflex)
+omarchy-jarvis exec "what can you do with audio"   # Domain drill-down (<30ms reflex)
 omarchy-jarvis exec "switch to workspace 3"
 omarchy-jarvis exec "pause music"
 omarchy-jarvis exec "top 3 processes by cpu"
@@ -56,7 +62,7 @@ omarchy-jarvis click 500 500            # Direct coordinate click
 
 # Fast Non-LLM Reflex Telemetry & Control
 omarchy-jarvis apps                     # List indexed desktop apps
-omarchy-jarvis top [--by cpu|memory]    # Instant top resource consumers (<10ms)
+omarchy-jarvis move-window [app] <ws>   # Move active window or app to target workspace (e.g. 2, another, next)
 omarchy-jarvis close <app_name>         # Gracefully close window/app
 omarchy-jarvis system <action>          # battery | disk | ram | ip | time | uptime | temp | shutdown | reboot | suspend | lock
 omarchy-jarvis clipboard [read|clear]   # Wayland clipboard operations
@@ -69,6 +75,9 @@ omarchy-jarvis display [list|scale]            # Inspect monitors or configure d
 # Smart App Switching & Compound Commands
 omarchy-jarvis exec "open spotify"                   # Switches workspace & focuses if open, launches if not
 omarchy-jarvis exec "where is discord"               # Reports workspace & focuses window
+omarchy-jarvis exec "move an open window to another workspace" # Moves active window to next active workspace
+omarchy-jarvis exec "move this window to workspace 2" # Moves active window to workspace 2
+omarchy-jarvis exec "move spotify to another workspace" # Moves specific open app to alternate workspace
 omarchy-jarvis exec "open spotify on workspace 4"    # Moves or launches app onto target workspace
 omarchy-jarvis exec "switch to workspace 2 and open ghostty" # Compound reflex chain (<50ms)
 omarchy-jarvis exec "system uptime and current workspace"    # Compound telemetry chain

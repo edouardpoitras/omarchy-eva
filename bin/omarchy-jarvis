@@ -763,6 +763,74 @@ def cmd_calibrate():
     subprocess.run([py, script])
 
 
+def cmd_move_window(args: list[str]):
+    """Move active window or named application to target workspace."""
+    if not args:
+        print("Usage: omarchy-jarvis move-window [app_name] <workspace|another|next|prev>")
+        print("Examples:")
+        print("  omarchy-jarvis move-window 2")
+        print("  omarchy-jarvis move-window another")
+        print("  omarchy-jarvis move-window next")
+        print("  omarchy-jarvis move-window spotify 4")
+        print("  omarchy-jarvis move-window discord another")
+        return
+
+    if len(args) == 1:
+        target = args[0]
+        cmd_text = f"move window to workspace {target}" if target.isdigit() else f"move window to {target} workspace"
+    else:
+        app_name = " ".join(args[:-1])
+        target = args[-1]
+        cmd_text = f"move {app_name} to workspace {target}" if target.isdigit() else f"move {app_name} to {target} workspace"
+
+    resp = send_ipc("execute_text", {"text": cmd_text}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        r = resp.get("result", {})
+        if r.get("speech"):
+            print(f"🪟 {r.get('speech')} ({r.get('latency_ms', 0)}ms)")
+        else:
+            print(f"🪟 Action: {r.get('action')} (Success={r.get('success')})")
+        return
+
+    disp = CommandDispatcher()
+    res = disp.dispatch_text(cmd_text, execute=True)
+    if res.get("speech"):
+        print(f"🪟 {res.get('speech')} ({res.get('latency_ms', 0)}ms)")
+    else:
+        print(f"🪟 Action: {res.get('action')} (Success={res.get('success')})")
+
+
+def cmd_info():
+    """Display Jarvis system identity, architecture, and live stats."""
+    from core.capabilities import capabilities_registry
+    ident = capabilities_registry.get_identity()
+    print("═" * 78)
+    print(" 🤖 OMARCHY JARVIS: SYSTEM IDENTITY & ARCHITECTURE")
+    print("═" * 78)
+    print(f"Name:             {ident['name']}")
+    print(f"Role:             {ident['role']}")
+    print(f"Environment:      {ident['system']}")
+    print(f"System 1 Engine:  {ident['tier1']}")
+    print(f"System 2 Engine:  {ident['tier2']}")
+    print(f"Voice / Audio:    {ident['voice']}")
+    print(f"Visual Interface: {ident['ui']}")
+    print(f"Registered Rules: {ident['total_intents']} Intent Categories across {ident['total_templates']} grammar templates")
+    print("═" * 78)
+    print("Butler Persona Speech:")
+    print(f"\"{ident['speech']}\"")
+    print("═" * 78)
+
+
+def cmd_capabilities(args: list[str]):
+    """Show capability matrix or drill down into a specific domain."""
+    from core.capabilities import capabilities_registry
+    if args:
+        target_domain = " ".join(args).strip()
+        print(capabilities_registry.format_cli_domain(target_domain))
+    else:
+        print(capabilities_registry.format_cli_overview())
+
+
 def print_help():
     print("""Omarchy Jarvis Voice Automation CLI
 
@@ -780,8 +848,13 @@ Usage:
   omarchy-jarvis classify <text...>    Evaluate Laya decision model & calibrated confidence
   omarchy-jarvis status                Show daemon status
 
+System Overview & Capabilities:
+  omarchy-jarvis info                  Show Jarvis identity, architecture, and persona
+  omarchy-jarvis capabilities [domain] Display capabilities matrix or drill down into a domain
+
 Reflex Desktop Controls & Telemetry:
   omarchy-jarvis apps                  List indexed desktop applications
+  omarchy-jarvis move-window [app] <ws> Move active window or app to target workspace
   omarchy-jarvis close [app_name]      Close specified application or active window
   omarchy-jarvis top [--by cpu|memory] Show top resource-consuming processes
   omarchy-jarvis audio [output|input|list] [dev] Switch audio output or mic
@@ -836,6 +909,8 @@ def main():
         cmd_top(sys.argv[2:])
     elif cmd in ("apps", "list-apps"):
         cmd_apps()
+    elif cmd in ("move-window", "window-move", "moveto"):
+        cmd_move_window(sys.argv[2:])
     elif cmd in ("close", "kill-app", "quit-app"):
         cmd_close(sys.argv[2:])
     elif cmd in ("audio", "sound-device"):
@@ -868,6 +943,10 @@ def main():
         cmd_voices()
     elif cmd == "classify":
         cmd_classify(sys.argv[2:])
+    elif cmd in ("info", "identity", "whoami"):
+        cmd_info()
+    elif cmd in ("capabilities", "caps", "features"):
+        cmd_capabilities(sys.argv[2:])
     elif cmd == "generate":
         cmd_generate(sys.argv[2:])
     elif cmd == "train":

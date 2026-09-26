@@ -232,6 +232,91 @@ class TestExtendedDispatcher(unittest.TestCase):
         self.assertEqual(res["intent"], "DIR_SHORTCUT")
         self.mock_system.open_directory.assert_called_with("downloads")
 
+    def test_move_generic_open_window_to_another_workspace(self):
+        """Test moving generic active/open windows across workspaces."""
+        self.mock_hypr.get_active_window.return_value = {
+            "title": "Terminal",
+            "class": "ghostty",
+            "workspace": {"id": 1, "name": "1"},
+        }
+        self.mock_hypr.get_workspaces.return_value = [
+            {"id": 1, "name": "1"},
+            {"id": 2, "name": "2"},
+        ]
+        self.mock_hypr.move_window_to_workspace.return_value = True
+
+        # 1. "move an open window to another workspace"
+        res1 = self.dispatcher.dispatch_text("move an open window to another workspace")
+        self.assertTrue(res1["matched"])
+        self.assertEqual(res1["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res1["action"], "movetoworkspace 2")
+        self.mock_hypr.move_window_to_workspace.assert_called_with("2")
+        self.mock_hypr.focus_workspace.assert_called_with("2")
+        self.assertIn("Moved ghostty to workspace 2", res1["speech"])
+
+        # 2. "move this window to workspace 3"
+        res2 = self.dispatcher.dispatch_text("move this window to workspace 3")
+        self.assertTrue(res2["matched"])
+        self.assertEqual(res2["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res2["action"], "movetoworkspace 3")
+        self.mock_hypr.move_window_to_workspace.assert_called_with("3")
+
+        # 3. "move window to next workspace"
+        res3 = self.dispatcher.dispatch_text("move window to next workspace")
+        self.assertTrue(res3["matched"])
+        self.assertEqual(res3["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res3["action"], "movetoworkspace 2")
+
+        # 4. "move open window to workspace 4"
+        res4 = self.dispatcher.dispatch_text("move open window to workspace 4")
+        self.assertTrue(res4["matched"])
+        self.assertEqual(res4["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res4["action"], "movetoworkspace 4")
+
+    def test_move_named_window_to_workspace(self):
+        """Test moving a specific open application to another workspace."""
+        self.mock_hypr.find_open_window.return_value = {
+            "title": "Spotify Free",
+            "class": "spotify",
+            "initialClass": "Spotify",
+            "address": "0x12345",
+            "workspace": {"id": 1, "name": "1"},
+        }
+        self.mock_hypr.get_workspaces.return_value = [
+            {"id": 1, "name": "1"},
+            {"id": 3, "name": "3"},
+        ]
+        self.mock_hypr.move_window_to_workspace.return_value = True
+
+        # "move spotify to workspace 4"
+        res1 = self.dispatcher.dispatch_text("move spotify to workspace 4")
+        self.assertTrue(res1["matched"])
+        self.assertEqual(res1["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res1["action"], "move_window spotify -> ws 4")
+        self.mock_hypr.move_window_to_workspace.assert_called_with("4")
+        self.mock_hypr.focus_workspace.assert_called_with("4")
+        self.assertIn("Moved Spotify to workspace 4", res1["speech"])
+
+        # "move spotify to another workspace"
+        res2 = self.dispatcher.dispatch_text("move spotify to another workspace")
+        self.assertTrue(res2["matched"])
+        self.assertEqual(res2["intent"], "HYPR_WINDOW_MOVE")
+        self.assertEqual(res2["action"], "move_window spotify -> ws 3")
+        self.mock_hypr.move_window_to_workspace.assert_called_with("3")
+
+    def test_resolve_target_workspace_dynamics(self):
+        """Test dynamic workspace resolution when multiple or single workspaces exist."""
+        # When on workspace 1 and [1, 2, 3] exist -> next is 2
+        self.mock_hypr.get_workspaces.return_value = [{"id": 1}, {"id": 2}, {"id": 3}]
+        self.assertEqual(self.dispatcher._get_another_workspace("1"), "2")
+
+        # When on workspace 3 and [1, 2, 3] exist -> cycles to 1
+        self.assertEqual(self.dispatcher._get_another_workspace("3"), "1")
+
+        # When only workspace 1 exists -> returns 2
+        self.mock_hypr.get_workspaces.return_value = [{"id": 1}]
+        self.assertEqual(self.dispatcher._get_another_workspace("1"), "2")
+
 
 if __name__ == "__main__":
     unittest.main()

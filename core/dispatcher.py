@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from core.app_indexer import AppIndexer
+from core.capabilities import capabilities_registry
 from core.dbus_mpris import DbusMediaControl
 from core.hyprland_ipc import HyprlandIPC
 from core.system1_laya import LayaDecisionEngine
@@ -79,6 +80,18 @@ def split_compound_commands(text: str) -> List[str]:
     return restored if len(restored) > 1 else [text]
 
 
+GENERIC_WINDOW_WORDS = {"the", "a", "an", "this", "active", "current", "open", "window", "app"}
+
+
+def is_generic_window_subject(term: str) -> bool:
+    """Return True if the term refers to the current/active/open window rather than a specific app."""
+    if not term:
+        return True
+    clean = term.strip().lower()
+    words = [w for w in clean.split() if w not in GENERIC_WINDOW_WORDS]
+    return len(words) == 0
+
+
 class CommandDispatcher:
     """High-speed deterministic reflex dispatcher mapping voice transcriptions to OS actions."""
 
@@ -99,6 +112,50 @@ class CommandDispatcher:
         self.apps = apps or AppIndexer()
         self.system = system or SystemControl()
         self.visual = visual or VisualGrounding()
+
+    def _get_another_workspace(self, cur_ws: str) -> str:
+        """Determine another active or available workspace to move a window to."""
+        try:
+            cur_int = int(cur_ws)
+        except (ValueError, TypeError):
+            cur_int = 1
+
+        wss = self.hypr.get_workspaces()
+        ws_ids = []
+        for w in wss:
+            try:
+                wid = int(w.get("id", 0))
+                if wid > 0:
+                    ws_ids.append(wid)
+            except (ValueError, TypeError):
+                pass
+        ws_ids = sorted(list(set(ws_ids)))
+
+        other_ids = [wid for wid in ws_ids if wid != cur_int]
+        if other_ids:
+            higher = [wid for wid in other_ids if wid > cur_int]
+            return str(higher[0] if higher else other_ids[0])
+        else:
+            return str(cur_int + 1 if cur_int > 0 else 2)
+
+    def _resolve_target_workspace(self, target_raw: str, cur_ws: str) -> str:
+        """Resolve a raw target workspace specification (numeric, relative, or dynamic) to a workspace ID."""
+        t = target_raw.strip().lower()
+        if t.isdigit():
+            return t
+        if t in ("another", "other", "different", "a different"):
+            return self._get_another_workspace(cur_ws)
+        if t in ("next", "the next"):
+            try:
+                return str(int(cur_ws) + 1)
+            except ValueError:
+                return "e+1"
+        if t in ("previous", "prev", "the previous"):
+            try:
+                return str(max(1, int(cur_ws) - 1))
+            except ValueError:
+                return "e-1"
+        return "1"
 
     def dispatch_text(self, raw_text: str, execute: bool = True) -> Dict[str, Any]:
         """Parse raw speech transcription and execute matching reflex command (or compound sequence)."""
@@ -204,6 +261,107 @@ class CommandDispatcher:
             "laya": laya_eval,
         }
 
+        # ------------------------------------------------------------- 0a. Jarvis Identity & Persona
+        identity_patterns = [
+            r"\bwho\s+are\s+you\b",
+            r"\bwhat\s+are\s+you\b(?!\s+(?:capable|doing))",
+            r"\bidentify\s+yourself\b",
+            r"\btell\s+me\s+about\s+yourself\b",
+            r"\bwho\s+made\s+you\b",
+            r"\bwhat\s+is\s+jarvis\b",
+            r"\bintroduce\s+yourself\b",
+            r"\bgive\s+me\s+an\s+overview\s+of\s+jarvis\b",
+        ]
+        if any(re.search(p, text) for p in identity_patterns):
+            id_info = capabilities_registry.get_identity()
+            speech = id_info["speech"]
+            if not execute:
+                result.update(matched=True, intent="JARVIS_IDENTITY", action="identify_jarvis", success=True)
+                return result
+            result.update(
+                matched=True,
+                intent="JARVIS_IDENTITY",
+                action="identify_jarvis",
+                success=True,
+                speech=speech,
+                identity=id_info,
+            )
+            if self.system2 and self.system2.tts:
+                self.system2.tts.speak(speech, block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # ------------------------------------------------------------- 0b. Domain-Specific Capability Drill-Down
+        # e.g., "what can you do with audio", "tell me about windows", "audio capabilities", "how does vision work"
+        m_domain_q = re.search(
+            r"\b(?:what\s+can\s+you\s+do\s+(?:with|for|in|about)|tell\s+me\s+about|how\s+does|what\s+are\s+your\s+capabilities\s+(?:with|for|in|about)?)\s+([a-zA-Z0-9_\-\s]+?)(?:\s+capabilities|\s+work)?\b",
+            text,
+        )
+        domain_matched = None
+        if m_domain_q:
+            cand = m_domain_q.group(1).strip()
+            if cand not in ("yourself", "this", "it", "you"):
+                domain_matched = capabilities_registry.resolve_domain(cand)
+
+        if not domain_matched:
+            m_cap_suffix = re.search(r"\b([a-zA-Z0-9_\-]+)\s+capabilities\b", text)
+            if m_cap_suffix:
+                cand = m_cap_suffix.group(1).strip()
+                if cand not in ("your", "all", "general"):
+                    domain_matched = capabilities_registry.resolve_domain(cand)
+
+        if domain_matched:
+            domain_info = capabilities_registry.get_domain_details(domain_matched)
+            if domain_info:
+                speech = domain_info["speech"]
+                if not execute:
+                    result.update(matched=True, intent="JARVIS_CAPABILITIES", action=f"capabilities_domain_{domain_matched}", success=True)
+                    return result
+                result.update(
+                    matched=True,
+                    intent="JARVIS_CAPABILITIES",
+                    action=f"capabilities_domain_{domain_matched}",
+                    success=True,
+                    speech=speech,
+                    domain_details=domain_info,
+                )
+                if self.system2 and self.system2.tts:
+                    self.system2.tts.speak(speech, block=False)
+                result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+                return result
+
+        # ------------------------------------------------------------- 0c. General Capabilities Overview
+        general_cap_patterns = [
+            r"\bwhat\s+can\s+you\s+do\b",
+            r"\bwhat\s+are\s+you\s+capable\s+of\b",
+            r"\bwhat\s+are\s+your\s+capabilities\b",
+            r"\blist\s+capabilities\b",
+            r"\bshow\s+capabilities\b",
+            r"\bwhat\s+features\s+do\s+you\s+have\b",
+            r"\bwhat\s+commands\s+do\s+you\s+support\b",
+            r"\bwhat\s+commands\s+can\s+i\s+run\b",
+            r"^help$",
+            r"^help\s+me$",
+        ]
+        if any(re.search(p, text) for p in general_cap_patterns):
+            overview = capabilities_registry.get_overview()
+            speech = overview["speech"]
+            if not execute:
+                result.update(matched=True, intent="JARVIS_CAPABILITIES", action="capabilities_overview", success=True)
+                return result
+            result.update(
+                matched=True,
+                intent="JARVIS_CAPABILITIES",
+                action="capabilities_overview",
+                success=True,
+                speech=speech,
+                capabilities=overview,
+            )
+            if self.system2 and self.system2.tts:
+                self.system2.tts.speak(speech, block=False)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
         # ------------------------------------------------------------- 0. Visual UI Click
         m_click = re.search(
             r"\b(double\s+click|right\s+click|click|press|tap)\s*(?:on\s+)?(?:the\s+)?(.+)\b",
@@ -238,15 +396,122 @@ class CommandDispatcher:
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
-        # ------------------------------------------------------------- 1. Targeted Workspace Launch / Move
-        # e.g., "open spotify on workspace 4", "launch ghostty in desktop 2", "open terminal in workspace 3"
-        m_target_ws = re.search(
-            r"\b(?:open|launch|start|run|move|show)\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)\s+(?:on|in|to)\s+(?:workspace|desktop)\s*(\d+)\b",
+        # ------------------------------------------------------------- 1. Move Window to Workspace
+        # Matches active window or specific named app/window moving to numeric, relative, or dynamic workspace:
+        # e.g.:
+        # - "move an open window to another workspace"
+        # - "move open window to another workspace"
+        # - "move this window to workspace 2"
+        # - "move window to next workspace"
+        # - "move active window to workspace 3"
+        # - "move spotify to workspace 4"
+        # - "move discord to another workspace"
+        # - "send window to desktop 2"
+        # - "put this on workspace 5"
+        m_move_win = re.search(
+            r"\b(?:move|send|transfer|put|shift)\s+(?:(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)(?:\s+window|\s+app)?\s+)?(?:on|in|to)\s+(?:workspace|desktop)?\s*(\d+|another|other|a\s+different|different|next|previous|prev)(?:\s+workspace|\s+desktop)?\b",
             text,
         )
-        if m_target_ws and not m_target_ws.group(1).strip() in ("window", "this window", "this"):
-            target_app_query = m_target_ws.group(1).strip()
-            target_ws = m_target_ws.group(2).strip()
+        if m_move_win:
+            raw_subj = (m_move_win.group(1) or "").strip()
+            raw_target = m_move_win.group(2).strip()
+
+            if is_generic_window_subject(raw_subj):
+                # Moving currently active / open window
+                if not execute:
+                    result.update(
+                        matched=True,
+                        intent="HYPR_WINDOW_MOVE",
+                        action=f"movetoworkspace {raw_target}",
+                        success=True,
+                    )
+                    return result
+
+                act = self.hypr.get_active_window()
+                cur_ws = str(act.get("workspace", {}).get("name") or act.get("workspace", {}).get("id") or "1") if act else "1"
+                target_ws = self._resolve_target_workspace(raw_target, cur_ws)
+                win_class = act.get("initialClass") or act.get("class") or "window" if act else "window"
+
+                ok = self.hypr.move_window_to_workspace(target_ws)
+                self.hypr.focus_workspace(target_ws)
+                speech = f"Moved {win_class} to workspace {target_ws}."
+
+                result.update(
+                    matched=True,
+                    intent="HYPR_WINDOW_MOVE",
+                    action=f"movetoworkspace {target_ws}",
+                    success=ok,
+                    speech=speech,
+                )
+                if result.get("speech") and self.system2 and self.system2.tts:
+                    self.system2.tts.speak(result["speech"], block=False)
+                result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+                return result
+
+            else:
+                # Moving a specific named application / window
+                target_app_query = raw_subj
+                if not execute:
+                    result.update(
+                        matched=True,
+                        intent="HYPR_WINDOW_MOVE",
+                        action=f"move_window {target_app_query} -> ws {raw_target}",
+                        success=True,
+                    )
+                    return result
+
+                client = self.hypr.find_open_window(target_app_query, app_indexer=self.apps)
+                if client:
+                    ws_info = client.get("workspace", {})
+                    cur_ws = str(ws_info.get("name") or ws_info.get("id") or "1")
+                    app_name = client.get("initialClass") or client.get("class") or target_app_query
+                    address = client.get("address", "")
+                    target_ws = self._resolve_target_workspace(raw_target, cur_ws)
+
+                    if cur_ws == target_ws:
+                        self.hypr.focus_workspace(target_ws)
+                        if address:
+                            self.hypr.focus_window_address(address)
+                        speech = f"{app_name} is already on workspace {target_ws}."
+                    else:
+                        self.hypr.focus_workspace(cur_ws)
+                        if address:
+                            self.hypr.focus_window_address(address)
+                        ok = self.hypr.move_window_to_workspace(target_ws)
+                        self.hypr.focus_workspace(target_ws)
+                        speech = f"Moved {app_name} to workspace {target_ws}."
+
+                    result.update(
+                        matched=True,
+                        intent="HYPR_WINDOW_MOVE",
+                        action=f"move_window {target_app_query} -> ws {target_ws}",
+                        success=True,
+                        speech=speech,
+                    )
+                else:
+                    speech = f"I could not find an open window for {target_app_query}."
+                    result.update(
+                        matched=True,
+                        intent="HYPR_WINDOW_MOVE",
+                        action=f"window_not_found {target_app_query}",
+                        success=False,
+                        speech=speech,
+                    )
+
+                if result.get("speech") and self.system2 and self.system2.tts:
+                    self.system2.tts.speak(result["speech"], block=False)
+                result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+                return result
+
+        # ------------------------------------------------------------- 2. Targeted Workspace Launch / Open
+        # e.g., "open spotify on workspace 4", "launch ghostty in desktop 2", "open terminal in workspace 3"
+        m_target_launch = re.search(
+            r"\b(?:open|launch|start|run)\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)\s+(?:on|in|to)\s+(?:workspace|desktop)\s*(\d+)\b",
+            text,
+        )
+        if m_target_launch:
+            target_app_query = m_target_launch.group(1).strip()
+            target_ws = m_target_launch.group(2).strip()
 
             if not execute:
                 result.update(matched=True, intent="APP_LAUNCH", action=f"open {target_app_query} on workspace {target_ws}", success=True)
@@ -293,21 +558,6 @@ class CommandDispatcher:
 
             if result.get("speech") and self.system2 and self.system2.tts:
                 self.system2.tts.speak(result["speech"], block=False)
-            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
-            return result
-
-        # ------------------------------------------------------------- 2. Move Active Window to Workspace
-        m_move = re.search(
-            r"\b(?:move|send|transfer)\s*(?:this|window)?\s*(?:to)?\s*(?:workspace|desktop)\s*(\d+)\b",
-            text,
-        )
-        if m_move:
-            ws_num = m_move.group(1)
-            if not execute:
-                result.update(matched=True, intent="HYPR_WINDOW_MOVE", action=f"movetoworkspace {ws_num}", success=True)
-                return result
-            ok = self.hypr.move_window_to_workspace(ws_num)
-            result.update(matched=True, intent="HYPR_WINDOW_MOVE", action=f"movetoworkspace {ws_num}", success=ok)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 

@@ -279,3 +279,31 @@ class HyprlandIPC:
             return self.focus_window_address(address)
         return True
 
+    def move_window_by_query_to_workspace(
+        self, query: str, ws: str, app_indexer: Optional[Any] = None
+    ) -> Tuple[bool, Optional[str]]:
+        """Find an open window matching query and move it to the target workspace."""
+        client = self.find_open_window(query, app_indexer=app_indexer)
+        if not client:
+            return False, None
+
+        app_name = client.get("initialClass") or client.get("class") or query
+        address = client.get("address", "")
+        ws_info = client.get("workspace", {})
+        cur_ws = str(ws_info.get("name") or ws_info.get("id") or "1")
+
+        if cur_ws != ws:
+            self.focus_workspace(cur_ws)
+            if address:
+                self.focus_window_address(address)
+            ok = self.move_window_to_workspace(ws)
+            self.focus_workspace(ws)
+            if address:
+                self.focus_window_address(address)
+            return ok, app_name
+        else:
+            self.focus_workspace(ws)
+            if address:
+                self.focus_window_address(address)
+            return True, app_name
+
