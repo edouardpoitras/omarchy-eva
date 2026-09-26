@@ -1,4 +1,4 @@
-"""Proactive Jarvis System Awareness & Watchdog Engine.
+"""Proactive Eva System Awareness & Watchdog Engine.
 
 Continuously monitors system telemetry, hardware limits, network connectivity,
 systemd journal anomalies, and ambient weather alerts. Proactively initiates
@@ -16,7 +16,7 @@ import time
 import urllib.request
 from typing import Any, Callable, Dict, List, Optional
 
-logger = logging.getLogger("jarvis.awareness")
+logger = logging.getLogger("eva.awareness")
 
 
 class AwarenessEngine:
@@ -68,7 +68,7 @@ class AwarenessEngine:
         if self.running:
             return
         self.running = True
-        self._thread = threading.Thread(target=self._run_loop, name="JarvisAwareness", daemon=True)
+        self._thread = threading.Thread(target=self._run_loop, name="EvaAwareness", daemon=True)
         self._thread.start()
 
     def stop(self):
@@ -373,7 +373,7 @@ class AwarenessEngine:
                 try:
                     prompt = (
                         f"The Linux systemd journal logged this critical event:\n\"{raw_sample}\"\n"
-                        "In exactly ONE brief, polite spoken sentence as Jarvis, inform the user what crashed or failed."
+                        "In exactly ONE brief, polite spoken sentence as Eva, inform the user what crashed or failed."
                     )
                     res = self.query_agent_callback(prompt)
                     if res and isinstance(res, dict) and res.get("response"):
@@ -382,7 +382,7 @@ class AwarenessEngine:
                     pass
 
             if not speech:
-                speech = f"Sir, an anomalous error was logged in the system journal: {raw_sample[:80]}."
+                speech = f"An anomalous error was logged in the system journal: {raw_sample[:80]}."
 
             title = "System Anomaly Logged"
             msg = raw_sample

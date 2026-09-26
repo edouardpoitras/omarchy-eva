@@ -1,4 +1,4 @@
-"""Unit tests for Jarvis daemon state persistence, HUD coordination, and IPC requests."""
+"""Unit tests for Eva daemon state persistence, HUD coordination, and IPC requests."""
 
 import json
 import os
@@ -7,21 +7,21 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from core.daemon import JarvisDaemon
+from core.daemon import EvaDaemon
 
 
-class TestJarvisDaemon(unittest.TestCase):
+class TestEvaDaemon(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.socket_path = os.path.join(self.temp_dir, "test_ipc.sock")
-        self.state_dir = os.path.join(self.temp_dir, "jarvis")
+        self.state_dir = os.path.join(self.temp_dir, "eva")
         os.makedirs(self.state_dir, exist_ok=True)
 
         # Patch paths to isolate inside temporary directory
         self.env_patcher = patch.dict(os.environ, {"XDG_RUNTIME_DIR": self.temp_dir})
         self.env_patcher.start()
 
-        self.daemon = JarvisDaemon(socket_path=self.socket_path)
+        self.daemon = EvaDaemon(socket_path=self.socket_path)
         self.daemon.sound = MagicMock()
         self.daemon.tts = MagicMock()
         self.daemon.voxtype = MagicMock()
@@ -34,7 +34,7 @@ class TestJarvisDaemon(unittest.TestCase):
 
     def test_state_json_persistence(self):
         """Verify set_state writes state.json atomically with required fields."""
-        state_file = os.path.join(self.daemon.jarvis_dir, "state.json")
+        state_file = os.path.join(self.daemon.eva_dir, "state.json")
         self.daemon.set_state(
             "executing",
             command="switch to workspace 2",

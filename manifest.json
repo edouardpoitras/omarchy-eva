@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "eddie.jarvis",
-  "name": "Jarvis Voice AI",
+  "id": "eddie.eva",
+  "name": "Eva Voice AI",
   "version": "0.1.0",
   "author": "Eddie",
   "license": "MIT",
@@ -12,11 +12,11 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Jarvis Voice",
+    "displayName": "Eva Voice",
     "description": "Voice-driven desktop reflex indicator and trigger",
     "category": "AI",
     "defaultSection": "right",
-    "aliases": ["jarvis", "omarchy.jarvis"],
+    "aliases": ["eva", "omarchy.eva"],
     "allowMultiple": false,
     "defaults": {
       "showLabel": false,

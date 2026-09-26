@@ -127,13 +127,13 @@ class TestSystem2Agent(unittest.TestCase):
     def test_conversation_history(self):
         self.agent.history.clear()
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout="Affirmative, sir.", stderr="")
-            self.agent.query("Jarvis, status check", speak=False)
+            mock_run.return_value = MagicMock(returncode=0, stdout="Affirmative.", stderr="")
+            self.agent.query("Eva, status check", speak=False)
             self.assertEqual(len(self.agent.history), 2)
             self.assertEqual(self.agent.history[0]["role"], "user")
-            self.assertEqual(self.agent.history[0]["content"], "Jarvis, status check")
+            self.assertEqual(self.agent.history[0]["content"], "Eva, status check")
             self.assertEqual(self.agent.history[1]["role"], "assistant")
-            self.assertEqual(self.agent.history[1]["content"], "Affirmative, sir.")
+            self.assertEqual(self.agent.history[1]["content"], "Affirmative.")
 
 
 class TestDispatcherSystem2Escalation(unittest.TestCase):
@@ -144,7 +144,7 @@ class TestDispatcherSystem2Escalation(unittest.TestCase):
         mock_system2.query.return_value = {
             "status": "ok",
             "agent": "gemini",
-            "response": "The CPU temperature is 42 degrees Celsius, sir.",
+            "response": "The CPU temperature is 42 degrees Celsius.",
             "requires_clarification": False,
             "latency_ms": 150.0,
         }
@@ -168,11 +168,11 @@ class TestDispatcherSystem2Escalation(unittest.TestCase):
             system2=mock_system2,
         )
 
-        res = dispatcher.dispatch_text("Jarvis, what is the temperature of the CPU?")
+        res = dispatcher.dispatch_text("Eva, what is the temperature of the CPU?")
         self.assertTrue(res["matched"])
         self.assertEqual(res["intent"], "ESCALATE_GENERATIVE")
         self.assertEqual(res["action"], "system2_agent_query")
-        self.assertEqual(res["response"], "The CPU temperature is 42 degrees Celsius, sir.")
+        self.assertEqual(res["response"], "The CPU temperature is 42 degrees Celsius.")
         mock_system2.query.assert_called_once()
 
     def test_unmatched_falls_back_to_system2(self):

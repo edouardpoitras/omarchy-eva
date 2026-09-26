@@ -6,24 +6,24 @@ import qs.Commons
 PanelWindow {
   id: root
 
-  property string jarvisState: "idle" // "idle", "listening", "transcribing", "deliberating", "executing", "clarifying", "error"
+  property string evaState: "idle" // "idle", "listening", "transcribing", "deliberating", "executing", "clarifying", "error"
   property string transcription: ""
   property string intent: ""
   property string lastAction: ""
   property real confidence: 1.0
   property string agentResponse: ""
 
-  readonly property bool isHudActive: jarvisState !== "idle"
+  readonly property bool isHudActive: evaState !== "idle"
 
   // Status Theme Colors
   readonly property color stateColor: {
-    if (jarvisState === "listening" || jarvisState === "recording") return "#00f0ff"    // Arc-Reactor Cyan
-    if (jarvisState === "transcribing") return "#ffaa00" // Amber
-    if (jarvisState === "deliberating") return "#b366ff" // Purple Resonance
-    if (jarvisState === "clarifying") return "#00c3ff"   // Blue Dialog
-    if (jarvisState === "executing") return "#00ff88"    // Emerald
-    if (jarvisState === "alert") return "#ff9900"        // Warning Amber / Gold
-    if (jarvisState === "error") return "#ff3344"        // Crimson
+    if (evaState === "listening" || evaState === "recording") return "#00f0ff"    // Arc-Reactor Cyan
+    if (evaState === "transcribing") return "#ffaa00" // Amber
+    if (evaState === "deliberating") return "#b366ff" // Purple Resonance
+    if (evaState === "clarifying") return "#00c3ff"   // Blue Dialog
+    if (evaState === "executing") return "#00ff88"    // Emerald
+    if (evaState === "alert") return "#ff9900"        // Warning Amber / Gold
+    if (evaState === "error") return "#ff3344"        // Crimson
     return "#00f0ff"
   }
 
@@ -31,7 +31,7 @@ PanelWindow {
   color: "transparent"
   visible: card.opacity > 0.01
 
-  WlrLayershell.namespace: "omarchy-jarvis-hud"
+  WlrLayershell.namespace: "omarchy-eva-hud"
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
   exclusionMode: ExclusionMode.Ignore
@@ -149,14 +149,14 @@ PanelWindow {
           spacing: 8
           Text {
             text: {
-              if (root.jarvisState === "listening" || root.jarvisState === "recording") return "JARVIS // LISTENING"
-              if (root.jarvisState === "transcribing") return "JARVIS // TRANSCRIBING"
-              if (root.jarvisState === "deliberating") return "JARVIS // DELIBERATING"
-              if (root.jarvisState === "clarifying") return "JARVIS // CLARIFYING"
-              if (root.jarvisState === "executing") return "JARVIS // EXECUTING"
-              if (root.jarvisState === "alert") return "JARVIS // SYSTEM ALERT"
-              if (root.jarvisState === "error") return "JARVIS // ERROR"
-              return "JARVIS"
+              if (root.evaState === "listening" || root.evaState === "recording") return "EVA // LISTENING"
+              if (root.evaState === "transcribing") return "EVA // TRANSCRIBING"
+              if (root.evaState === "deliberating") return "EVA // DELIBERATING"
+              if (root.evaState === "clarifying") return "EVA // CLARIFYING"
+              if (root.evaState === "executing") return "EVA // EXECUTING"
+              if (root.evaState === "alert") return "EVA // SYSTEM ALERT"
+              if (root.evaState === "error") return "EVA // ERROR"
+              return "EVA"
             }
             font.family: "monospace"
             font.pixelSize: 10
@@ -167,7 +167,7 @@ PanelWindow {
 
           // Intent & Confidence Badge
           Rectangle {
-            visible: root.intent !== "" && (root.jarvisState === "executing" || root.jarvisState === "idle" || root.jarvisState === "alert")
+            visible: root.intent !== "" && (root.evaState === "executing" || root.evaState === "idle" || root.evaState === "alert")
             height: 14
             width: badgeText.implicitWidth + 8
             radius: 4
@@ -192,10 +192,10 @@ PanelWindow {
           width: parent.width
           elide: Text.ElideRight
           text: {
-            if (root.jarvisState === "listening" || root.jarvisState === "recording") return "Listening to speech..."
-            if (root.jarvisState === "transcribing") return "Analyzing audio waveform..."
-            if (root.jarvisState === "deliberating") return root.transcription || "Synthesizing answer..."
-            if (root.jarvisState === "alert") return root.lastCommand || "System warning detected"
+            if (root.evaState === "listening" || root.evaState === "recording") return "Listening to speech..."
+            if (root.evaState === "transcribing") return "Analyzing audio waveform..."
+            if (root.evaState === "deliberating") return root.transcription || "Synthesizing answer..."
+            if (root.evaState === "alert") return root.lastCommand || "System warning detected"
             if (root.transcription) return "\"" + root.transcription + "\""
             if (root.lastAction) return root.lastAction
             return "Systems operational"
@@ -225,7 +225,7 @@ PanelWindow {
 
             // Dynamic oscillating height based on sinusoids when listening/speaking/alerting
             property real phaseOffset: index * 0.45
-            property real activeMultiplier: (root.jarvisState === "listening" || root.jarvisState === "recording" || root.jarvisState === "deliberating" || root.jarvisState === "alert") ? 1.0 : 0.25
+            property real activeMultiplier: (root.evaState === "listening" || root.evaState === "recording" || root.evaState === "deliberating" || root.evaState === "alert") ? 1.0 : 0.25
 
             height: root.isHudActive ? Math.max(4, 24 * activeMultiplier * (0.4 + 0.6 * Math.abs(Math.sin(waveTimer.tick + phaseOffset)))) : 4
 

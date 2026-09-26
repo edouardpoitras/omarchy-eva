@@ -1,4 +1,4 @@
-"""Unit tests for Compound Multi-Step Command Execution in Jarvis."""
+"""Unit tests for Compound Multi-Step Command Execution in Eva."""
 
 import unittest
 from unittest.mock import MagicMock

@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from core.app_indexer import AppIndexer
 from core.capabilities import capabilities_registry
+from core.config import eva_config
+from core.context_memory import context_memory
 from core.dbus_mpris import DbusMediaControl
 from core.hyprland_ipc import HyprlandIPC
 from core.system1_laya import LayaDecisionEngine
@@ -157,12 +159,36 @@ class CommandDispatcher:
                 return "e-1"
         return "1"
 
+    def _speak(
+        self,
+        text: Optional[str],
+        intent: Optional[str] = None,
+        action: Optional[str] = None,
+        is_query: bool = False,
+        is_error: bool = False,
+    ):
+        """Conditionally speak text using Kokoro TTS based on EvaConfig verbosity settings."""
+        if not text or not self.system2 or not self.system2.tts:
+            return
+        if eva_config.should_speak_action(
+            intent=intent, action=action, is_query=is_query, is_error=is_error
+        ):
+            self.system2.tts.speak(text, block=False)
+
     def dispatch_text(self, raw_text: str, execute: bool = True) -> Dict[str, Any]:
         """Parse raw speech transcription and execute matching reflex command (or compound sequence)."""
         t_start = time.perf_counter()
 
+        # Pronoun & Anaphora resolution against context memory & active window
+        act_win = None
+        try:
+            act_win = self.hypr.get_active_window()
+        except Exception:
+            pass
+        resolved_text = context_memory.resolve_anaphora(raw_text, active_window=act_win)
+
         # 1. Check for compound command splitting (e.g. "open spotify and pause music")
-        parts = split_compound_commands(raw_text)
+        parts = split_compound_commands(resolved_text)
         if len(parts) > 1:
             can_all_reflex = True
             dry_results = []
@@ -178,7 +204,8 @@ class CommandDispatcher:
                     actions = [r.get("action", "") for r in dry_results if r.get("action")]
                     return {
                         "input": raw_text,
-                        "normalized": normalize_numbers(raw_text.strip().lower()),
+                        "resolved": resolved_text,
+                        "normalized": normalize_numbers(resolved_text.strip().lower()),
                         "matched": True,
                         "intent": "COMPOUND_REFLEX",
                         "action": " -> ".join(actions),
@@ -196,12 +223,13 @@ class CommandDispatcher:
                 combined_action = " -> ".join(actions)
                 combined_speech = " ".join(speeches) if speeches else None
 
-                if combined_speech and self.system2 and self.system2.tts:
-                    self.system2.tts.speak(combined_speech, block=False)
+                if combined_speech:
+                    self._speak(combined_speech, intent="COMPOUND_REFLEX", action=combined_action)
 
                 return {
                     "input": raw_text,
-                    "normalized": normalize_numbers(raw_text.strip().lower()),
+                    "resolved": resolved_text,
+                    "normalized": normalize_numbers(resolved_text.strip().lower()),
                     "matched": True,
                     "intent": "COMPOUND_REFLEX",
                     "action": combined_action,
@@ -215,16 +243,18 @@ class CommandDispatcher:
                 if not execute:
                     return {
                         "input": raw_text,
-                        "normalized": normalize_numbers(raw_text.strip().lower()),
+                        "resolved": resolved_text,
+                        "normalized": normalize_numbers(resolved_text.strip().lower()),
                         "matched": True,
                         "intent": "ESCALATE_GENERATIVE",
                         "action": "system2_agent_query",
                         "success": True,
                     }
-                agent_res = self.system2.query(raw_text, speak=True)
+                agent_res = self.system2.query(resolved_text, speak=True)
                 return {
                     "input": raw_text,
-                    "normalized": normalize_numbers(raw_text.strip().lower()),
+                    "resolved": resolved_text,
+                    "normalized": normalize_numbers(resolved_text.strip().lower()),
                     "matched": True,
                     "intent": "ESCALATE_GENERATIVE",
                     "action": "system2_agent_query",
@@ -237,7 +267,11 @@ class CommandDispatcher:
                 }
 
         # Otherwise execute single command directly
-        return self._dispatch_single(raw_text, execute=execute)
+        res = self._dispatch_single(resolved_text, execute=execute)
+        res["input"] = raw_text
+        if resolved_text != raw_text:
+            res["resolved"] = resolved_text
+        return res
 
     dispatch = dispatch_text
 
@@ -261,33 +295,32 @@ class CommandDispatcher:
             "laya": laya_eval,
         }
 
-        # ------------------------------------------------------------- 0a. Jarvis Identity & Persona
+        # ------------------------------------------------------------- 0a. Eva Identity & Persona
         identity_patterns = [
             r"\bwho\s+are\s+you\b",
             r"\bwhat\s+are\s+you\b(?!\s+(?:capable|doing))",
             r"\bidentify\s+yourself\b",
             r"\btell\s+me\s+about\s+yourself\b",
             r"\bwho\s+made\s+you\b",
-            r"\bwhat\s+is\s+jarvis\b",
+            r"\bwhat\s+is\s+eva\b",
             r"\bintroduce\s+yourself\b",
-            r"\bgive\s+me\s+an\s+overview\s+of\s+jarvis\b",
+            r"\bgive\s+me\s+an\s+overview\s+of\s+eva\b",
         ]
         if any(re.search(p, text) for p in identity_patterns):
             id_info = capabilities_registry.get_identity()
             speech = id_info["speech"]
             if not execute:
-                result.update(matched=True, intent="JARVIS_IDENTITY", action="identify_jarvis", success=True)
+                result.update(matched=True, intent="EVA_IDENTITY", action="identify_eva", success=True)
                 return result
             result.update(
                 matched=True,
-                intent="JARVIS_IDENTITY",
-                action="identify_jarvis",
+                intent="EVA_IDENTITY",
+                action="identify_eva",
                 success=True,
                 speech=speech,
                 identity=id_info,
             )
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="EVA_IDENTITY", action="identify_eva", is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -315,18 +348,17 @@ class CommandDispatcher:
             if domain_info:
                 speech = domain_info["speech"]
                 if not execute:
-                    result.update(matched=True, intent="JARVIS_CAPABILITIES", action=f"capabilities_domain_{domain_matched}", success=True)
+                    result.update(matched=True, intent="EVA_CAPABILITIES", action=f"capabilities_domain_{domain_matched}", success=True)
                     return result
                 result.update(
                     matched=True,
-                    intent="JARVIS_CAPABILITIES",
+                    intent="EVA_CAPABILITIES",
                     action=f"capabilities_domain_{domain_matched}",
                     success=True,
                     speech=speech,
                     domain_details=domain_info,
                 )
-                if self.system2 and self.system2.tts:
-                    self.system2.tts.speak(speech, block=False)
+                self._speak(speech, intent="EVA_CAPABILITIES", action=f"capabilities_domain_{domain_matched}", is_query=True)
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -347,18 +379,17 @@ class CommandDispatcher:
             overview = capabilities_registry.get_overview()
             speech = overview["speech"]
             if not execute:
-                result.update(matched=True, intent="JARVIS_CAPABILITIES", action="capabilities_overview", success=True)
+                result.update(matched=True, intent="EVA_CAPABILITIES", action="capabilities_overview", success=True)
                 return result
             result.update(
                 matched=True,
-                intent="JARVIS_CAPABILITIES",
+                intent="EVA_CAPABILITIES",
                 action="capabilities_overview",
                 success=True,
                 speech=speech,
                 capabilities=overview,
             )
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="EVA_CAPABILITIES", action="capabilities_overview", is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -391,8 +422,7 @@ class CommandDispatcher:
                     speech=res.get("speech"),
                     click_result=res,
                 )
-                if res.get("speech") and self.system2 and self.system2.tts:
-                    self.system2.tts.speak(res["speech"], block=False)
+                self._speak(res.get("speech"), intent="VISUAL_CLICK", action=result["action"])
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -435,6 +465,13 @@ class CommandDispatcher:
                 ok = self.hypr.move_window_to_workspace(target_ws)
                 self.hypr.focus_workspace(target_ws)
                 speech = f"Moved {win_class} to workspace {target_ws}."
+                context_memory.record(
+                    intent="HYPR_WINDOW_MOVE",
+                    action=f"movetoworkspace {target_ws}",
+                    app=win_class,
+                    workspace=target_ws,
+                    window_class=win_class,
+                )
 
                 result.update(
                     matched=True,
@@ -443,8 +480,7 @@ class CommandDispatcher:
                     success=ok,
                     speech=speech,
                 )
-                if result.get("speech") and self.system2 and self.system2.tts:
-                    self.system2.tts.speak(result["speech"], block=False)
+                self._speak(result.get("speech"), intent="HYPR_WINDOW_MOVE", action=result["action"])
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -481,6 +517,13 @@ class CommandDispatcher:
                         self.hypr.focus_workspace(target_ws)
                         speech = f"Moved {app_name} to workspace {target_ws}."
 
+                    context_memory.record(
+                        intent="HYPR_WINDOW_MOVE",
+                        action=f"move_window {target_app_query} -> ws {target_ws}",
+                        app=target_app_query,
+                        workspace=target_ws,
+                    )
+
                     result.update(
                         matched=True,
                         intent="HYPR_WINDOW_MOVE",
@@ -498,8 +541,7 @@ class CommandDispatcher:
                         speech=speech,
                     )
 
-                if result.get("speech") and self.system2 and self.system2.tts:
-                    self.system2.tts.speak(result["speech"], block=False)
+                self._speak(result.get("speech"), intent="HYPR_WINDOW_MOVE", action=result["action"])
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -556,8 +598,14 @@ class CommandDispatcher:
                     speech=speech,
                 )
 
-            if result.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(result["speech"], block=False)
+            context_memory.record(
+                intent=result["intent"],
+                action=result["action"],
+                app=target_app_query,
+                workspace=target_ws,
+            )
+
+            self._speak(result.get("speech"), intent=result["intent"], action=result["action"])
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -569,6 +617,7 @@ class CommandDispatcher:
                 result.update(matched=True, intent="HYPR_WORKSPACE", action=f"workspace {ws_num}", success=True)
                 return result
             ok = self.hypr.focus_workspace(ws_num)
+            context_memory.record(intent="HYPR_WORKSPACE", action=f"workspace {ws_num}", workspace=ws_num)
             result.update(matched=True, intent="HYPR_WORKSPACE", action=f"workspace {ws_num}", success=ok)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
@@ -683,8 +732,7 @@ class CommandDispatcher:
                 return result
             res = self.system.open_directory(dir_target)
             result.update(matched=True, intent="DIR_SHORTCUT", action=f"open_{dir_target}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="DIR_SHORTCUT", action=result["action"])
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -704,8 +752,7 @@ class CommandDispatcher:
             else:
                 speech = f"{query_target} is not currently running."
             result.update(matched=True, intent="HYPR_INSPECTION", action=f"where_is {query_target}", success=True, speech=speech)
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="HYPR_INSPECTION", action=result["action"], is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -725,8 +772,7 @@ class CommandDispatcher:
             else:
                 speech = "No window is currently active."
             result.update(matched=True, intent="HYPR_INSPECTION", action="active_window", success=True, speech=speech)
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="HYPR_INSPECTION", action=result["action"], is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -742,8 +788,7 @@ class CommandDispatcher:
             else:
                 speech = "No windows are currently open."
             result.update(matched=True, intent="HYPR_INSPECTION", action="list_windows", success=True, speech=speech)
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="HYPR_INSPECTION", action=result["action"], is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -756,8 +801,7 @@ class CommandDispatcher:
             ws_name = str(ws.get("name") or ws.get("id") or "1")
             speech = f"You are currently on workspace {ws_name}."
             result.update(matched=True, intent="HYPR_INSPECTION", action="current_workspace", success=True, speech=speech)
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="HYPR_INSPECTION", action=result["action"], is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -771,8 +815,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_current_track()
             result.update(matched=True, intent="MEDIA_QUERY", action="current_track", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="MEDIA_QUERY", action="current_track", is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -788,15 +831,16 @@ class CommandDispatcher:
                         ws = str(client.get("workspace", {}).get("name") or client.get("workspace", {}).get("id") or "1")
                         app_name = client.get("initialClass") or client.get("class") or "Terminal"
                         msg = f"Switching to {app_name} on workspace {ws}."
+                        context_memory.record(intent="HYPR_FOCUS", action="focus terminal", app=app_name, workspace=ws)
                         result.update(matched=True, intent="HYPR_FOCUS", action="focus terminal", success=True, speech=msg)
-                        if self.system2 and self.system2.tts:
-                            self.system2.tts.speak(msg, block=False)
+                        self._speak(msg, intent="HYPR_FOCUS", action="focus terminal")
                         result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                         return result
             if not execute:
                 result.update(matched=True, intent="APP_LAUNCH", action="launch terminal", success=True)
                 return result
             ok = self.hypr.exec_app("omarchy-default-terminal")
+            context_memory.record(intent="APP_LAUNCH", action="launch terminal", app="ghostty")
             result.update(matched=True, intent="APP_LAUNCH", action="launch terminal", success=ok)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
@@ -812,15 +856,16 @@ class CommandDispatcher:
                         ws = str(client.get("workspace", {}).get("name") or client.get("workspace", {}).get("id") or "1")
                         app_name = client.get("initialClass") or client.get("class") or "Browser"
                         msg = f"Switching to {app_name} on workspace {ws}."
+                        context_memory.record(intent="HYPR_FOCUS", action="focus browser", app=app_name, workspace=ws)
                         result.update(matched=True, intent="HYPR_FOCUS", action="focus browser", success=True, speech=msg)
-                        if self.system2 and self.system2.tts:
-                            self.system2.tts.speak(msg, block=False)
+                        self._speak(msg, intent="HYPR_FOCUS", action="focus browser")
                         result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                         return result
             if not execute:
                 result.update(matched=True, intent="APP_LAUNCH", action="launch browser", success=True)
                 return result
             ok = self.hypr.exec_app("omarchy-default-browser")
+            context_memory.record(intent="APP_LAUNCH", action="launch browser", app="google-chrome")
             result.update(matched=True, intent="APP_LAUNCH", action="launch browser", success=ok)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
@@ -836,15 +881,16 @@ class CommandDispatcher:
                         ws = str(client.get("workspace", {}).get("name") or client.get("workspace", {}).get("id") or "1")
                         app_name = client.get("initialClass") or client.get("class") or "Editor"
                         msg = f"Switching to {app_name} on workspace {ws}."
+                        context_memory.record(intent="HYPR_FOCUS", action="focus editor", app=app_name, workspace=ws)
                         result.update(matched=True, intent="HYPR_FOCUS", action="focus editor", success=True, speech=msg)
-                        if self.system2 and self.system2.tts:
-                            self.system2.tts.speak(msg, block=False)
+                        self._speak(msg, intent="HYPR_FOCUS", action="focus editor")
                         result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                         return result
             if not execute:
                 result.update(matched=True, intent="APP_LAUNCH", action="launch editor", success=True)
                 return result
             ok = self.hypr.exec_app("omarchy-default-editor")
+            context_memory.record(intent="APP_LAUNCH", action="launch editor", app="cursor")
             result.update(matched=True, intent="APP_LAUNCH", action="launch editor", success=ok)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
@@ -862,9 +908,9 @@ class CommandDispatcher:
                 ws = str(client.get("workspace", {}).get("name") or client.get("workspace", {}).get("id") or "1") if isinstance(client, dict) else "1"
                 app_name = client.get("initialClass") or client.get("class") or target_app if isinstance(client, dict) else target_app
                 msg = f"Switching to {app_name} on workspace {ws}."
+                context_memory.record(intent="HYPR_FOCUS", action=f"focus {target_app}", app=app_name, workspace=ws)
                 result.update(matched=True, intent="HYPR_FOCUS", action=f"focus {target_app}", success=True, speech=msg)
-                if self.system2 and self.system2.tts:
-                    self.system2.tts.speak(msg, block=False)
+                self._speak(msg, intent="HYPR_FOCUS", action=f"focus {target_app}")
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -900,9 +946,9 @@ class CommandDispatcher:
                             app_name = client.get("initialClass") or client.get("class") or candidate_app
                             ws = str(client.get("workspace", {}).get("name") or client.get("workspace", {}).get("id") or "1")
                             msg = f"Switching to {app_name} on workspace {ws}."
+                            context_memory.record(intent="HYPR_FOCUS", action=f"focus {candidate_app}", app=app_name, workspace=ws)
                             result.update(matched=True, intent="HYPR_FOCUS", action=f"focus {candidate_app}", success=True, speech=msg)
-                            if self.system2 and self.system2.tts:
-                                self.system2.tts.speak(msg, block=False)
+                            self._speak(msg, intent="HYPR_FOCUS", action=f"focus {candidate_app}")
                             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                             return result
 
@@ -911,6 +957,7 @@ class CommandDispatcher:
                 if app_match:
                     launch_res = self.apps.launch(candidate_app)
                     speech = f"Launching {app_match['name']}."
+                    context_memory.record(intent="APP_LAUNCH", action=f"launch {app_match['name']}", app=candidate_app)
                     result.update(
                         matched=True,
                         intent="APP_LAUNCH",
@@ -918,8 +965,7 @@ class CommandDispatcher:
                         success=launch_res.get("success", False),
                         speech=speech,
                     )
-                    if self.system2 and self.system2.tts:
-                        self.system2.tts.speak(speech, block=False)
+                    self._speak(speech, intent="APP_LAUNCH", action=f"launch {app_match['name']}")
                     result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                     return result
 
@@ -936,11 +982,13 @@ class CommandDispatcher:
 
             if target_close in ("window", "this window", "this", "active", "active window", "window now", "current window"):
                 ok = self.hypr.close_window()
+                context_memory.record(intent="HYPR_WINDOW", action="close_window")
                 result.update(matched=True, intent="HYPR_WINDOW", action="close_window", success=ok)
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
             elif target_close not in ("session", "workstation", "computer"):
                 res = self.system.close_app(target_close)
+                context_memory.record(intent="APP_CLOSE", action=f"close {target_close}", app=target_close)
                 result.update(
                     matched=True,
                     intent="APP_CLOSE",
@@ -948,8 +996,7 @@ class CommandDispatcher:
                     success=res.get("success", False),
                     speech=res.get("message"),
                 )
-                if res.get("message") and self.system2 and self.system2.tts:
-                    self.system2.tts.speak(res["message"], block=False)
+                self._speak(res.get("message"), intent="APP_CLOSE", action=f"close {target_close}")
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
 
@@ -1146,8 +1193,7 @@ class CommandDispatcher:
                 return result
             res = self.system.switch_audio_output(target_dev)
             result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_output {target_dev}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="AUDIO_CONTROL", action=result["action"])
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1174,8 +1220,7 @@ class CommandDispatcher:
                 return result
             res = self.system.switch_audio_input(target_mic)
             result.update(matched=True, intent="AUDIO_CONTROL", action=f"switch_audio_input {target_mic}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1186,8 +1231,7 @@ class CommandDispatcher:
                 return result
             res = self.system.list_audio_devices_speech("all")
             result.update(matched=True, intent="AUDIO_CONTROL", action="list_audio_devices", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1197,8 +1241,7 @@ class CommandDispatcher:
                 return result
             res = self.system.list_audio_devices_speech("input")
             result.update(matched=True, intent="AUDIO_CONTROL", action="list_microphones", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1214,8 +1257,7 @@ class CommandDispatcher:
                 return result
             res = self.system.connect_wifi(target_ssid)
             result.update(matched=True, intent="DEVICE_CONTROL", action=f"wifi_connect {target_ssid}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1225,8 +1267,7 @@ class CommandDispatcher:
                 return result
             res = self.system.disconnect_wifi()
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_disconnect", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1236,8 +1277,7 @@ class CommandDispatcher:
                 return result
             res = self.system.list_wifi_networks(rescan="scan" in text)
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_list", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1247,8 +1287,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_wifi_status()
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_status", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1258,8 +1297,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_wifi("on")
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_on", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1269,8 +1307,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_wifi("off")
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_off", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1280,8 +1317,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_wifi("toggle")
             result.update(matched=True, intent="DEVICE_CONTROL", action="wifi_toggle", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1294,8 +1330,7 @@ class CommandDispatcher:
                 return result
             res = self.system.connect_bluetooth(target_bt)
             result.update(matched=True, intent="DEVICE_CONTROL", action=f"bluetooth_connect {target_bt}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1307,8 +1342,7 @@ class CommandDispatcher:
                 return result
             res = self.system.disconnect_bluetooth(target_bt)
             result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_disconnect", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1318,8 +1352,7 @@ class CommandDispatcher:
                 return result
             res = self.system.list_bluetooth_devices()
             result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_list", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1329,8 +1362,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_bluetooth("on")
             result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_on", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1340,8 +1372,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_bluetooth("off")
             result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_off", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1351,8 +1382,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_bluetooth("toggle")
             result.update(matched=True, intent="DEVICE_CONTROL", action="bluetooth_toggle", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1363,8 +1393,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_dnd()
             result.update(matched=True, intent="DEVICE_CONTROL", action="toggle_dnd", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1375,8 +1404,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_idle("stay-awake")
             result.update(matched=True, intent="DEVICE_CONTROL", action="stay_awake", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1386,8 +1414,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_idle("allow-idle")
             result.update(matched=True, intent="DEVICE_CONTROL", action="allow_idle", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1398,8 +1425,7 @@ class CommandDispatcher:
                 return result
             res = self.system.toggle_bar()
             result.update(matched=True, intent="DEVICE_CONTROL", action="toggle_bar", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1414,8 +1440,7 @@ class CommandDispatcher:
                 return result
             res = self.system.set_brightness(val)
             result.update(matched=True, intent="DEVICE_CONTROL", action=f"brightness_set {val}%", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1425,8 +1450,7 @@ class CommandDispatcher:
                 return result
             res = self.system.adjust_brightness(10)
             result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_up", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1436,8 +1460,7 @@ class CommandDispatcher:
                 return result
             res = self.system.adjust_brightness(-10)
             result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_down", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1447,8 +1470,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_brightness()
             result.update(matched=True, intent="DEVICE_CONTROL", action="brightness_get", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1459,8 +1481,7 @@ class CommandDispatcher:
                 return result
             res = self.system.list_displays()
             result.update(matched=True, intent="DEVICE_CONTROL", action="list_displays", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1473,14 +1494,13 @@ class CommandDispatcher:
                 return result
             res = self.system.set_display_scale(mon_target, scale_val)
             result.update(matched=True, intent="DEVICE_CONTROL", action=f"set_scale {mon_target} {scale_val}", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
         # ------------------------------------------------------------- 12. Diagnostics & System Telemetry
         # System Health Overview
-        if any(phrase in text for phrase in ["system status", "system health", "jarvis health", "health check", "system overview"]):
+        if any(phrase in text for phrase in ["system status", "system health", "eva health", "health check", "system overview"]):
             if not execute:
                 result.update(matched=True, intent="SYSTEM_TELEMETRY", action="system_health", success=True)
                 return result
@@ -1492,8 +1512,7 @@ class CommandDispatcher:
             temp_str = f"with temperature at {temp['temperature_c']} degrees Celsius" if temp.get("success") else ""
             speech = f"System status is nominal {temp_str}. Available RAM is {ram.get('available_gb', 'unknown')} gigabytes, and free disk space is {disk.get('free_gb', 'unknown')} gigabytes."
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="system_health", success=True, speech=speech)
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(speech, block=False)
+            self._speak(speech, intent="SYSTEM_TELEMETRY", action="system_health", is_query=True)
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1525,8 +1544,7 @@ class CommandDispatcher:
                 speech=res.get("speech"),
                 telemetry_result=res,
             )
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1537,8 +1555,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_uptime()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="uptime", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1549,8 +1566,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_cpu_temperature()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="temperature", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1561,8 +1577,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_battery_status()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="battery_status", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1573,8 +1588,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_disk_space()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="disk_space", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1585,8 +1599,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_ram_status()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="ram_status", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1597,8 +1610,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_time_date()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="time_date", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1609,8 +1621,7 @@ class CommandDispatcher:
                 return result
             res = self.system.get_local_ip()
             result.update(matched=True, intent="SYSTEM_TELEMETRY", action="local_ip", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1621,8 +1632,7 @@ class CommandDispatcher:
                 return result
             res = self.system.power_action("shutdown")
             result.update(matched=True, intent="SYSTEM_POWER", action="shutdown", success=True, speech=res.get("speech"))
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="SYSTEM_POWER", action="shutdown")
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1632,8 +1642,7 @@ class CommandDispatcher:
                 return result
             res = self.system.power_action("reboot")
             result.update(matched=True, intent="SYSTEM_POWER", action="reboot", success=True, speech=res.get("speech"))
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="SYSTEM_POWER", action="reboot")
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1643,8 +1652,7 @@ class CommandDispatcher:
                 return result
             res = self.system.power_action("suspend")
             result.update(matched=True, intent="SYSTEM_POWER", action="suspend", success=True, speech=res.get("speech"))
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="SYSTEM_POWER", action="suspend")
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1654,8 +1662,7 @@ class CommandDispatcher:
                 return result
             res = self.system.power_action("logout")
             result.update(matched=True, intent="SYSTEM_POWER", action="logout", success=True, speech=res.get("speech"))
-            if self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent="SYSTEM_POWER", action="logout")
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1666,8 +1673,7 @@ class CommandDispatcher:
                 return result
             res = self.system.read_clipboard()
             result.update(matched=True, intent="CLIPBOARD", action="read_clipboard", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -1677,8 +1683,7 @@ class CommandDispatcher:
                 return result
             res = self.system.clear_clipboard()
             result.update(matched=True, intent="CLIPBOARD", action="clear_clipboard", success=res.get("success", False), speech=res.get("speech"))
-            if res.get("speech") and self.system2 and self.system2.tts:
-                self.system2.tts.speak(res["speech"], block=False)
+            self._speak(res.get("speech"), intent=result.get("intent"), action=result.get("action"))
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 

@@ -10,7 +10,7 @@ from typing import Callable, Optional
 class VoxtypeBridge:
     """Manages audio recording and transcription handoff via Voxtype."""
 
-    TRANSCRIPTION_PATH = "/dev/shm/jarvis_transcription.txt"
+    TRANSCRIPTION_PATH = "/dev/shm/eva_transcription.txt"
 
     def __init__(self, on_state_changed: Optional[Callable[[str], None]] = None):
         self.on_state_changed = on_state_changed

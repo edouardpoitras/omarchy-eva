@@ -1,4 +1,4 @@
-"""Unit tests for the Jarvis Core reflex command dispatcher."""
+"""Unit tests for the Eva Core reflex command dispatcher."""
 
 import unittest
 from unittest.mock import MagicMock

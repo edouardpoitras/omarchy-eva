@@ -13,12 +13,12 @@ class TestVisionCapture(unittest.TestCase):
     """Test suite for VisionCapture engine."""
 
     def setUp(self):
-        self.vc = VisionCapture(output_path="/tmp/jarvis_test_screen.jpg")
+        self.vc = VisionCapture(output_path="/tmp/eva_test_screen.jpg")
 
     def tearDown(self):
-        if os.path.exists("/tmp/jarvis_test_screen.jpg"):
+        if os.path.exists("/tmp/eva_test_screen.jpg"):
             try:
-                os.remove("/tmp/jarvis_test_screen.jpg")
+                os.remove("/tmp/eva_test_screen.jpg")
             except OSError:
                 pass
 
@@ -33,7 +33,7 @@ class TestVisionCapture(unittest.TestCase):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
             path, latency = self.vc.capture_screen(mode="fullscreen", quality=70)
-            self.assertEqual(path, "/tmp/jarvis_test_screen.jpg")
+            self.assertEqual(path, "/tmp/eva_test_screen.jpg")
             self.assertGreaterEqual(latency, 0.0)
             mock_run.assert_called_once()
             args = mock_run.call_args[0][0]
@@ -48,7 +48,7 @@ class TestVisionCapture(unittest.TestCase):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
                 path, latency = self.vc.capture_screen(mode="active_window")
-                self.assertEqual(path, "/tmp/jarvis_test_screen.jpg")
+                self.assertEqual(path, "/tmp/eva_test_screen.jpg")
                 args = mock_run.call_args[0][0]
                 self.assertIn("-g", args)
                 self.assertIn("50,50 800x600", args)
@@ -93,13 +93,13 @@ class TestInputController(unittest.TestCase):
         with patch("os.path.exists", return_value=True):
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0)
-                ok = self.inp.type_text("Hello Jarvis", delay_ms=25)
+                ok = self.inp.type_text("Hello Eva", delay_ms=25)
                 self.assertTrue(ok)
                 mock_run.assert_called_once()
                 args = mock_run.call_args[0][0]
                 self.assertIn("/usr/bin/wtype", args)
                 self.assertIn("-d", args)
-                self.assertIn("Hello Jarvis", args)
+                self.assertIn("Hello Eva", args)
 
     def test_hotkey_parsing(self):
         with patch.object(self.inp, "press_key", return_value=True) as mock_press:
@@ -129,7 +129,7 @@ class TestSystem2VisionQuery(unittest.TestCase):
     def test_query_auto_routes_visual_phrases(self):
         with patch.object(self.agent, "query_vision") as mock_vision:
             mock_vision.return_value = {"status": "ok", "response": "Screen visual response"}
-            res = self.agent.query("Jarvis, what's on my screen right now?", speak=False)
+            res = self.agent.query("Eva, what's on my screen right now?", speak=False)
             mock_vision.assert_called_once()
 
 

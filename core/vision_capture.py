@@ -1,4 +1,4 @@
-"""High-speed screen perception engine for Omarchy Jarvis.
+"""High-speed screen perception engine for Omarchy Eva.
 
 Captures display framebuffers using grim into local memory in ~30ms,
 supporting fullscreen and active-window bounded geometries.
@@ -12,14 +12,14 @@ import time
 from typing import Optional, Tuple
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE_DIR = os.path.join(REPO_ROOT, ".cache", "jarvis")
+CACHE_DIR = os.path.join(REPO_ROOT, ".cache", "eva")
 os.makedirs(CACHE_DIR, exist_ok=True)
 CAPTURES_DIR = os.path.join(REPO_ROOT, "assets", "captures")
 os.makedirs(CAPTURES_DIR, exist_ok=True)
 
 DEFAULT_SCREENSHOT_PATH = os.path.join(CACHE_DIR, "screen.jpg")
 WORKSPACE_SCREENSHOT_PATH = os.path.join(CAPTURES_DIR, "screen.jpg")
-SHM_SCREENSHOT_PATH = "/dev/shm/jarvis_screen.jpg"
+SHM_SCREENSHOT_PATH = "/dev/shm/eva_screen.jpg"
 
 
 class VisionCapture:

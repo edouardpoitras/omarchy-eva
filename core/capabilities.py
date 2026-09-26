@@ -1,7 +1,7 @@
-"""Central Capabilities & Knowledge Registry for Omarchy Jarvis.
+"""Central Capabilities & Knowledge Registry for Eva desktop automation suite.
 
 Serves as the canonical single source of truth for:
-1. Jarvis Identity, persona, and system overview.
+1. Eva Identity, persona, and system overview.
 2. Capability domains (windows, apps, audio, hardware, system, vision, awareness, reasoning, chaining).
 3. Dynamic synchronization with training/schema.yaml (intents, slots, templates, actions).
 4. Sub-30ms System 1 Butler-voice spoken responses (concise, conversational, no markdown).
@@ -16,6 +16,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 import yaml
+
+from core.config import eva_config
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SCHEMA_PATH = os.path.join(REPO_ROOT, "training", "schema.yaml")
@@ -147,7 +149,7 @@ DOMAIN_DEFINITIONS: Dict[str, Dict[str, Any]] = {
 }
 
 
-class JarvisCapabilitiesRegistry:
+class EvaCapabilitiesRegistry:
     """Dynamic capability registry and knowledge base synchronized with schema.yaml."""
 
     def __init__(self, schema_path: str = SCHEMA_PATH):
@@ -175,6 +177,8 @@ class JarvisCapabilitiesRegistry:
                 for intent_meta in self._intents.values():
                     if isinstance(intent_meta, dict):
                         total_t += len(intent_meta.get("templates", []))
+                    elif isinstance(intent_meta, list):
+                        total_t += len(intent_meta)
                 self._total_templates = total_t
         except Exception:
             pass
@@ -197,10 +201,10 @@ class JarvisCapabilitiesRegistry:
     def get_identity(self) -> Dict[str, Any]:
         """Return canonical persona and identity specification."""
         self._reload_if_needed()
-        name = "Jarvis"
+        name = eva_config.get("name", "Eva")
         role = "Voice-enabled desktop AI intelligence embedded directly into Omarchy Linux running Hyprland."
         speech = (
-            "I am Jarvis, the voice-enabled desktop intelligence embedded directly into Omarchy Linux on Hyprland. "
+            f"I am {name}, the voice-enabled desktop intelligence embedded directly into Omarchy Linux on Hyprland. "
             "I orchestrate sub-30 millisecond desktop automation, system telemetry, screen vision, hardware routing, "
             "and proactive machine awareness, backed by deliberative agent reasoning when needed."
         )
@@ -210,7 +214,7 @@ class JarvisCapabilitiesRegistry:
             "system": "Omarchy Linux (Hyprland / Wayland)",
             "tier1": "System 1 Reflex Dispatcher (<30ms, zero LLM calls)",
             "tier2": "System 2 Deliberative Reasoning (Gemini, Claude, Codex agent CLIs)",
-            "voice": "Kokoro-82M Neural TTS with real-time acoustic earcons",
+            "voice": f"Kokoro-82M Neural TTS ({eva_config.voice}) with real-time acoustic earcons",
             "ui": "Floating Arc-Reactor HUD overlay and Wayland notifications",
             "total_intents": self.total_intents,
             "total_templates": self.total_templates,
@@ -244,16 +248,13 @@ class JarvisCapabilitiesRegistry:
     def resolve_domain(self, query: str) -> Optional[str]:
         """Fuzzy resolve a spoken or text query to a canonical domain name."""
         q = query.strip().lower()
-        # 1. Direct key match
         if q in DOMAIN_DEFINITIONS:
             return q
 
-        # 2. Exact alias match
         for d_key, meta in DOMAIN_DEFINITIONS.items():
             if q in meta.get("aliases", []):
                 return d_key
 
-        # 3. Substring match
         for d_key, meta in DOMAIN_DEFINITIONS.items():
             for alias in meta.get("aliases", []):
                 if len(alias) > 3 and (alias in q or q in alias):
@@ -283,6 +284,8 @@ class JarvisCapabilitiesRegistry:
                 registered_templates.extend(intent_meta.get("templates", []))
                 for s_key, s_vals in intent_meta.get("slots", {}).items():
                     slot_definitions[s_key] = s_vals
+            elif isinstance(intent_meta, list):
+                registered_templates.extend(intent_meta)
 
         return {
             "domain": d_key,
@@ -299,11 +302,11 @@ class JarvisCapabilitiesRegistry:
         }
 
     def format_cli_overview(self) -> str:
-        """Format an elegant CLI overview of all Jarvis capabilities."""
+        """Format an elegant CLI overview of all Eva capabilities."""
         self._reload_if_needed()
         lines = []
         lines.append("╔════════════════════════════════════════════════════════════════════════════════╗")
-        lines.append("║                    OMARCHY JARVIS CAPABILITIES MATRIX                         ║")
+        lines.append("║                     OMARCHY EVA CAPABILITIES MATRIX                            ║")
         lines.append("╠════════════════════════════════════════════════════════════════════════════════╣")
         lines.append(f"║ Active Domains: {len(DOMAIN_DEFINITIONS):<2} | Registered Schema Intents: {self.total_intents:<3} | Templates: {self.total_templates:<4} ║")
         lines.append("╠══════════════════╤═════════════════════════════════════════════════════════════╣")
@@ -318,7 +321,7 @@ class JarvisCapabilitiesRegistry:
                 lines.append(f"║ {'':<16} │ {sub_line:<59} ║")
 
         lines.append("╚══════════════════╧═════════════════════════════════════════════════════════════╝")
-        lines.append("\nRun 'omarchy-jarvis capabilities <domain>' for deep drill-down and template samples.")
+        lines.append("\nRun 'omarchy-eva capabilities <domain>' for deep drill-down and template samples.")
         return "\n".join(lines)
 
     def format_cli_domain(self, domain_or_query: str) -> str:
@@ -329,7 +332,7 @@ class JarvisCapabilitiesRegistry:
 
         lines = []
         lines.append("═" * 78)
-        lines.append(f" JARVIS CAPABILITY: {details['title'].upper()}")
+        lines.append(f" EVA CAPABILITY: {details['title'].upper()}")
         lines.append("═" * 78)
         lines.append(f"Description: {details['description']}")
         lines.append(f"Spoken Voice: \"{details['spoken']}\"")
@@ -365,7 +368,7 @@ class JarvisCapabilitiesRegistry:
         """Construct grounded capability context to inject into System 2 prompt."""
         self._reload_if_needed()
         lines = []
-        lines.append("Jarvis Built-In OS Capabilities (System 1 Reflex & Device Controls):")
+        lines.append("Eva Built-In OS Capabilities (System 1 Reflex & Device Controls):")
         lines.append("You have access to these deterministic capabilities already running on the user's system:")
         for key, meta in DOMAIN_DEFINITIONS.items():
             lines.append(f"- {meta['title']}: {meta['description']}")
@@ -379,4 +382,4 @@ class JarvisCapabilitiesRegistry:
 
 
 # Singleton instance for universal import
-capabilities_registry = JarvisCapabilitiesRegistry()
+capabilities_registry = EvaCapabilitiesRegistry()

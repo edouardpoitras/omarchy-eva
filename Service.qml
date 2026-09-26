@@ -24,7 +24,7 @@ Item {
   }
 
   // Runtime state
-  property string jarvisState: "idle" // "idle", "listening", "transcribing", "deliberating", "clarifying", "executing", "error"
+  property string evaState: "idle" // "idle", "listening", "transcribing", "deliberating", "clarifying", "executing", "error"
   property string lastCommand: ""
   property string lastAction: ""
   property string intent: ""
@@ -34,29 +34,29 @@ Item {
 
   readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + (Quickshell.env("UID") || "1000"))
   readonly property string voxtypeStatePath: runtimeDir + "/voxtype/state"
-  readonly property string jarvisStatePath: runtimeDir + "/jarvis/state.json"
-  readonly property string jarvisSocketPath: runtimeDir + "/jarvis/ipc.sock"
+  readonly property string evaStatePath: runtimeDir + "/eva/state.json"
+  readonly property string evaSocketPath: runtimeDir + "/eva/ipc.sock"
 
-  // Watch Jarvis daemon state file (atomic state updates from daemon)
+  // Watch Eva daemon state file (atomic state updates from daemon)
   FileView {
-    id: jarvisWatcher
-    path: root.jarvisStatePath
+    id: evaWatcher
+    path: root.evaStatePath
     watchChanges: true
     printErrors: false
 
-    onLoaded: updateFromJarvis()
+    onLoaded: updateFromEva()
     onFileChanged: reload()
     onLoadFailed: {
       // Retain existing state if temporarily locked
     }
   }
 
-  function updateFromJarvis() {
-    var raw = (jarvisWatcher.text() || "").trim()
+  function updateFromEva() {
+    var raw = (evaWatcher.text() || "").trim()
     if (!raw) return
     try {
       var data = JSON.parse(raw)
-      if (data.state) root.jarvisState = data.state
+      if (data.state) root.evaState = data.state
       if (data.command !== undefined) root.lastCommand = data.command
       if (data.action !== undefined) root.lastAction = data.action
       if (data.intent !== undefined) root.intent = data.intent
@@ -75,20 +75,19 @@ Item {
     onLoaded: updateFromVoxtype()
     onFileChanged: reload()
     onLoadFailed: {
-      if (root.jarvisState !== "idle" && !jarvisWatcher.exists) root.jarvisState = "idle"
+      if (root.evaState !== "idle" && !evaWatcher.exists) root.evaState = "idle"
     }
   }
 
   function updateFromVoxtype() {
     var raw = (voxtypeWatcher.text() || "").trim().toLowerCase()
     if (raw === "recording") {
-      root.jarvisState = "listening"
+      root.evaState = "listening"
     } else if (raw === "transcribing") {
-      root.jarvisState = "transcribing"
+      root.evaState = "transcribing"
     } else if (raw === "idle") {
-      if (root.jarvisState === "transcribing" || root.jarvisState === "listening") {
-        root.jarvisState = "executing"
-        pollStatusTimer.restart()
+      if (root.evaState === "transcribing" || root.evaState === "listening") {
+        root.evaState = "executing"
       }
     }
   }
@@ -99,8 +98,8 @@ Item {
     interval: 8000
     repeat: false
     onTriggered: {
-      if (root.jarvisState !== "idle") {
-        root.jarvisState = "idle"
+      if (root.evaState !== "idle") {
+        root.evaState = "idle"
       }
     }
   }
@@ -112,21 +111,41 @@ Item {
 
   // Public action callable from BarWidget or keybindings
   function trigger() {
-    triggerProcess.command = [root.pluginRoot + "/bin/omarchy-jarvis", "trigger"]
+    triggerProcess.command = [root.pluginRoot + "/bin/omarchy-eva", "trigger"]
     triggerProcess.running = true
+  }
+
+  // Process to execute commands directly
+  Process {
+    id: execProcess
+  }
+
+  function executeQuery(text) {
+    execProcess.command = [root.pluginRoot + "/bin/omarchy-eva", "exec", text]
+    execProcess.running = true
+  }
+
+  // Process to restart daemon
+  Process {
+    id: restartProcess
+  }
+
+  function restartDaemon() {
+    restartProcess.command = ["bash", "-c", "pkill -f omarchy-eva-daemon || true; sleep 0.5; " + root.pluginRoot + "/bin/omarchy-eva-daemon &"]
+    restartProcess.running = true
   }
 
   // Ensure daemon is started when shell loads
   Process {
     id: daemonLauncher
-    command: [root.pluginRoot + "/bin/omarchy-jarvis-daemon"]
+    command: [root.pluginRoot + "/bin/omarchy-eva-daemon"]
     running: true
   }
 
-  // Floating Iron Man Arc-Reactor HUD Overlay
+  // Floating Arc-Reactor HUD Overlay
   HudOverlay {
     id: hud
-    jarvisState: root.jarvisState
+    evaState: root.evaState
     transcription: root.lastCommand
     intent: root.intent
     lastAction: root.lastAction

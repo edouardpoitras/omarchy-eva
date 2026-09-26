@@ -1,4 +1,4 @@
-"""Kokoro-82M Neural Text-to-Speech Engine for Omarchy Jarvis.
+"""Kokoro-82M Neural Text-to-Speech Engine for Eva desktop automation suite.
 
 Provides ultra-fast local neural speech synthesis (<35ms on RTX 4090)
 and direct playback via PipeWire (pw-play).
@@ -13,25 +13,27 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from core.config import eva_config
+
 # Cache directory for speech waveforms
-AUDIO_CACHE_DIR = os.path.expanduser("~/.cache/jarvis/tts")
+AUDIO_CACHE_DIR = os.path.expanduser("~/.cache/eva/tts")
 os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
 
 # Default voice settings
-DEFAULT_VOICE = "bm_george"  # British male (Iron Man Jarvis aesthetic)
+DEFAULT_VOICE = "bf_emma"  # British female (Eva aesthetic)
 SAMPLE_RATE = 24000
 
 AVAILABLE_VOICES = {
-    "bm_george": {"name": "George", "gender": "male", "lang": "b", "accent": "British"},
-    "bm_lewis": {"name": "Lewis", "gender": "male", "lang": "b", "accent": "British"},
     "bf_emma": {"name": "Emma", "gender": "female", "lang": "b", "accent": "British"},
     "bf_isabella": {"name": "Isabella", "gender": "female", "lang": "b", "accent": "British"},
-    "am_adam": {"name": "Adam", "gender": "male", "lang": "a", "accent": "American"},
-    "am_michael": {"name": "Michael", "gender": "male", "lang": "a", "accent": "American"},
     "af_bella": {"name": "Bella", "gender": "female", "lang": "a", "accent": "American"},
     "af_nicole": {"name": "Nicole", "gender": "female", "lang": "a", "accent": "American"},
     "af_sarah": {"name": "Sarah", "gender": "female", "lang": "a", "accent": "American"},
     "af_sky": {"name": "Sky", "gender": "female", "lang": "a", "accent": "American"},
+    "bm_george": {"name": "George", "gender": "male", "lang": "b", "accent": "British"},
+    "bm_lewis": {"name": "Lewis", "gender": "male", "lang": "b", "accent": "British"},
+    "am_adam": {"name": "Adam", "gender": "male", "lang": "a", "accent": "American"},
+    "am_michael": {"name": "Michael", "gender": "male", "lang": "a", "accent": "American"},
 }
 
 
@@ -40,11 +42,11 @@ class KokoroTTS:
 
     def __init__(
         self,
-        default_voice: str = DEFAULT_VOICE,
+        default_voice: Optional[str] = None,
         device: Optional[str] = None,
         lazy_init: bool = False,
     ):
-        self.default_voice = default_voice
+        self._default_voice = default_voice
         self.device = device
         self._pipelines: Dict[str, Any] = {}
         self._lock = threading.Lock()
@@ -54,6 +56,12 @@ class KokoroTTS:
 
         if not lazy_init:
             self._ensure_pipeline(self._lang_for_voice(self.default_voice))
+
+    @property
+    def default_voice(self) -> str:
+        if self._default_voice:
+            return self._default_voice
+        return eva_config.voice
 
     def _lang_for_voice(self, voice: str) -> str:
         """Infer language code ('a' for American, 'b' for British) from voice identifier."""
@@ -93,7 +101,7 @@ class KokoroTTS:
         self,
         text: str,
         voice: Optional[str] = None,
-        speed: float = 1.0,
+        speed: Optional[float] = None,
     ) -> Tuple[Optional[np.ndarray], float]:
         """Synthesize text into a float32 audio waveform.
         
@@ -105,6 +113,7 @@ class KokoroTTS:
             return None, 0.0
 
         v = voice or self.default_voice
+        sp = speed if speed is not None else float(eva_config.get("voice_speed", 1.0))
         lang = self._lang_for_voice(v)
         pipe = self._ensure_pipeline(lang)
         if not pipe:
@@ -113,7 +122,7 @@ class KokoroTTS:
         t0 = time.perf_counter()
         try:
             chunks = []
-            generator = pipe(text, voice=v, speed=speed)
+            generator = pipe(text, voice=v, speed=sp)
             for res in generator:
                 if hasattr(res, "audio") and res.audio is not None:
                     audio_chunk = res.audio
@@ -136,13 +145,14 @@ class KokoroTTS:
         text: str,
         output_wav: Optional[str] = None,
         voice: Optional[str] = None,
-        speed: float = 1.0,
+        speed: Optional[float] = None,
     ) -> Tuple[Optional[str], float]:
         """Synthesize text and write directly to a WAV file."""
         import soundfile as sf
 
         v = voice or self.default_voice
-        cache_path = self.get_cache_path(text, v, speed)
+        sp = speed if speed is not None else float(eva_config.get("voice_speed", 1.0))
+        cache_path = self.get_cache_path(text, v, sp)
 
         # Check existing cache
         if os.path.exists(cache_path) and os.path.getsize(cache_path) > 1024:
@@ -153,7 +163,7 @@ class KokoroTTS:
             return dest, 0.5  # Instant cache hit
 
         target_file = output_wav or cache_path
-        audio, latency_ms = self.synthesize(text, voice=v, speed=speed)
+        audio, latency_ms = self.synthesize(text, voice=v, speed=sp)
         if audio is None:
             return None, latency_ms
 
@@ -199,20 +209,30 @@ class KokoroTTS:
         self,
         text: str,
         voice: Optional[str] = None,
-        speed: float = 1.0,
+        speed: Optional[float] = None,
         block: bool = False,
     ) -> Dict[str, Any]:
         """Synthesize text and play immediately via PipeWire / pw-play.
         
         Args:
             text: Text to speak.
-            voice: Voice ID (default: 'bm_george').
+            voice: Voice ID (default: eva_config.voice / 'bf_emma').
             speed: Speech rate multiplier.
             block: If True, waits until playback finishes. If False, plays asynchronously.
             
         Returns:
             Dictionary with status, latency_ms, audio_duration_sec, and wav_path.
         """
+        if eva_config.verbosity == "silent":
+            return {
+                "success": True,
+                "latency_ms": 0.0,
+                "duration_sec": 0.0,
+                "voice": voice or self.default_voice,
+                "wav_path": None,
+                "silent": True,
+            }
+
         wav_path, latency_ms = self.synthesize_to_file(
             text, voice=voice, speed=speed
         )

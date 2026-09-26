@@ -94,11 +94,11 @@ ps               0.1  0.0
     @patch("subprocess.run")
     def test_read_clipboard(self, mock_run):
         """Test reading Wayland clipboard content."""
-        mock_run.return_value = MagicMock(returncode=0, stdout="Jarvis voice automation")
+        mock_run.return_value = MagicMock(returncode=0, stdout="Eva voice automation")
         res = self.sys.read_clipboard()
         self.assertTrue(res["success"])
-        self.assertEqual(res["text"], "Jarvis voice automation")
-        self.assertIn("Jarvis voice automation", res["speech"])
+        self.assertEqual(res["text"], "Eva voice automation")
+        self.assertIn("Eva voice automation", res["speech"])
 
 
 if __name__ == "__main__":

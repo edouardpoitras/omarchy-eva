@@ -1,4 +1,4 @@
-"""Virtual input controller with subtle human-like delays for Omarchy Jarvis.
+"""Virtual input controller with subtle human-like delays for Omarchy Eva.
 
 Implements fluid, natural mouse movement via cubic ease-out interpolation on Hyprland IPC
 and cadence-delayed keyboard typing via wtype.

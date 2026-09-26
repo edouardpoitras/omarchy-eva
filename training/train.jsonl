@@ -6,14 +6,14 @@
 {"text": "please screenshot whole screen for me", "intent": "SYSTEM_ACTION"}
 {"text": "uh volume 80 right now", "intent": "AUDIO_CONTROL"}
 {"text": "could you transfer window to workspace 4 please", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "jarvis open files for me", "intent": "APP_LAUNCH"}
+{"text": "eva open files for me", "intent": "APP_LAUNCH"}
 {"text": "quick maximize window please", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis organize my workspace windows into a 3-way vertical split please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva organize my workspace windows into a 3-way vertical split please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um float this window please", "intent": "HYPR_WINDOW"}
 {"text": "i want to pause playback right now", "intent": "MEDIA_CONTROL"}
 {"text": "quick what is the best way to optimize battery life on hyprland right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick focus firefox now", "intent": "HYPR_FOCUS"}
-{"text": "jarvis new terminal window thanks", "intent": "APP_LAUNCH"}
+{"text": "eva new terminal window thanks", "intent": "APP_LAUNCH"}
 {"text": "i want to go to workspace 6 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "could you open files now", "intent": "APP_LAUNCH"}
 {"text": "go ahead and next track", "intent": "MEDIA_CONTROL"}
@@ -32,13 +32,13 @@
 {"text": "go ahead and new terminal window thanks", "intent": "APP_LAUNCH"}
 {"text": "um pause video", "intent": "MEDIA_CONTROL"}
 {"text": "i want to switch to workspace 6 for me", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis show me discord please", "intent": "HYPR_FOCUS"}
+{"text": "hey eva show me discord please", "intent": "HYPR_FOCUS"}
 {"text": "um explain the difference between ModernBERT and RoBERTa please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to volume 80 for me", "intent": "AUDIO_CONTROL"}
 {"text": "can you show me kitty thanks", "intent": "HYPR_FOCUS"}
 {"text": "could you show me spotify now", "intent": "HYPR_FOCUS"}
 {"text": "i want to switch to workspace 2 now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis lock computer now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva lock computer now", "intent": "SYSTEM_ACTION"}
 {"text": "um go to workspace +1", "intent": "HYPR_WORKSPACE"}
 {"text": "uh next song", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and capture screenshot please", "intent": "SYSTEM_ACTION"}
@@ -66,17 +66,17 @@
 {"text": "could you toggle fullscreen thanks", "intent": "HYPR_WINDOW"}
 {"text": "quick show me kitty right now", "intent": "HYPR_FOCUS"}
 {"text": "i want to go to workspace 10 right now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis switch to workspace 9", "intent": "HYPR_WORKSPACE"}
+{"text": "eva switch to workspace 9", "intent": "HYPR_WORKSPACE"}
 {"text": "toggle window split right now", "intent": "HYPR_WINDOW"}
 {"text": "i want to focus spotify right now", "intent": "HYPR_FOCUS"}
 {"text": "quick quit this window thanks", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and what is the best way to optimize battery life on hyprland please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to summarize the latest git commits", "intent": "ESCALATE_GENERATIVE"}
 {"text": "write a bash script to clean up docker containers now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis show me discord now", "intent": "HYPR_FOCUS"}
+{"text": "hey eva show me discord now", "intent": "HYPR_FOCUS"}
 {"text": "quick open browser thanks", "intent": "APP_LAUNCH"}
 {"text": "i want to toggle window split right now", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis show me ghostty thanks", "intent": "HYPR_FOCUS"}
+{"text": "hey eva show me ghostty thanks", "intent": "HYPR_FOCUS"}
 {"text": "could you unfloat window right now", "intent": "HYPR_WINDOW"}
 {"text": "um open desktop 10 now", "intent": "HYPR_WORKSPACE"}
 {"text": "go ahead and turn it down for me", "intent": "AUDIO_CONTROL"}
@@ -86,7 +86,7 @@
 {"text": "uh send window to desktop 9 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "um resume playback for me", "intent": "MEDIA_CONTROL"}
 {"text": "um previous song", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis bring up browser for me", "intent": "HYPR_FOCUS"}
+{"text": "hey eva bring up browser for me", "intent": "HYPR_FOCUS"}
 {"text": "uh transfer window to workspace 3 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to jump to workspace 3 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "unmute microphone for me", "intent": "AUDIO_CONTROL"}
@@ -99,8 +99,8 @@
 {"text": "uh volume 60", "intent": "AUDIO_CONTROL"}
 {"text": "i want to new terminal window", "intent": "APP_LAUNCH"}
 {"text": "um turn it up", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis launch browser now", "intent": "APP_LAUNCH"}
-{"text": "jarvis move window to workspace 4 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva launch browser now", "intent": "APP_LAUNCH"}
+{"text": "eva move window to workspace 4 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh next track please", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and quit this window thanks", "intent": "HYPR_WINDOW"}
 {"text": "open editor now", "intent": "APP_LAUNCH"}
@@ -116,30 +116,30 @@
 {"text": "uh switch to workspace 10 please", "intent": "HYPR_WORKSPACE"}
 {"text": "please move window to workspace 9", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh why is the bluetooth daemon failing? now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis open file manager right now", "intent": "APP_LAUNCH"}
+{"text": "hey eva open file manager right now", "intent": "APP_LAUNCH"}
 {"text": "uh show me terminal now", "intent": "HYPR_FOCUS"}
 {"text": "go ahead and transfer window to workspace 8 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you put this on workspace 3 now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis new terminal window for me", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis pause music please", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis switch to workspace 5 for me", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva new terminal window for me", "intent": "APP_LAUNCH"}
+{"text": "hey eva pause music please", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva switch to workspace 5 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "switch to firefox now", "intent": "HYPR_FOCUS"}
 {"text": "i want to launch neovim now", "intent": "APP_LAUNCH"}
 {"text": "um switch to browser thanks", "intent": "HYPR_FOCUS"}
 {"text": "can you toggle fullscreen thanks", "intent": "HYPR_WINDOW"}
 {"text": "um switch to workspace 6 now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis turn off night light for me", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva turn off night light for me", "intent": "SYSTEM_ACTION"}
 {"text": "i want to resume video now", "intent": "MEDIA_CONTROL"}
 {"text": "i want to toggle playback please", "intent": "MEDIA_CONTROL"}
 {"text": "uh focus terminal right now", "intent": "HYPR_FOCUS"}
 {"text": "please kill active window right now", "intent": "HYPR_WINDOW"}
 {"text": "could you unmute microphone thanks", "intent": "AUDIO_CONTROL"}
 {"text": "can you focus kitty thanks", "intent": "HYPR_FOCUS"}
-{"text": "jarvis can you write a python script for this", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva can you write a python script for this", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh previous track right now", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and set volume to 90 percent", "intent": "AUDIO_CONTROL"}
 {"text": "could you show me neovim thanks", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis bring up brave right now", "intent": "HYPR_FOCUS"}
+{"text": "hey eva bring up brave right now", "intent": "HYPR_FOCUS"}
 {"text": "uh capture screenshot right now", "intent": "SYSTEM_ACTION"}
 {"text": "please next song please", "intent": "MEDIA_CONTROL"}
 {"text": "uh close this window thanks", "intent": "HYPR_WINDOW"}
@@ -149,52 +149,52 @@
 {"text": "um check system logs for kernel panics now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to switch to slack please", "intent": "HYPR_FOCUS"}
 {"text": "uh screenshot whole screen", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis volume 70 please", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis next song thanks", "intent": "MEDIA_CONTROL"}
+{"text": "eva volume 70 please", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva next song thanks", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and show me brave for me", "intent": "HYPR_FOCUS"}
 {"text": "can you open browser please", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis help me debug this rust compilation error for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva help me debug this rust compilation error for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick switch to workspace 10 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "uh organize my workspace windows into a 3-way vertical split", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis turn on night light thanks", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis switch to workspace 4 please", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva turn on night light thanks", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva switch to workspace 4 please", "intent": "HYPR_WORKSPACE"}
 {"text": "quick switch to workspace 2", "intent": "HYPR_WORKSPACE"}
 {"text": "go ahead and maximize window", "intent": "HYPR_WINDOW"}
 {"text": "please volume 30 now", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis how do I configure wireguard on arch linux thanks", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis set volume to 10 percent for me", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis can you write a python script for this right now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva how do I configure wireguard on arch linux thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva set volume to 10 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva can you write a python script for this right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um volume 40 please", "intent": "AUDIO_CONTROL"}
 {"text": "can you transfer window to workspace 1 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "go ahead and send window to desktop 4 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "please unfloat window", "intent": "HYPR_WINDOW"}
 {"text": "please hold playback now", "intent": "MEDIA_CONTROL"}
-{"text": "jarvis focus terminal please", "intent": "HYPR_FOCUS"}
-{"text": "jarvis organize my workspace windows into a 3-way vertical split for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva focus terminal please", "intent": "HYPR_FOCUS"}
+{"text": "eva organize my workspace windows into a 3-way vertical split for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh new terminal window for me", "intent": "APP_LAUNCH"}
 {"text": "um open files right now", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis transfer window to workspace 9 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva transfer window to workspace 9 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh previous track", "intent": "MEDIA_CONTROL"}
 {"text": "quick screenshot region right now", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis turn off night light now", "intent": "SYSTEM_ACTION"}
+{"text": "eva turn off night light now", "intent": "SYSTEM_ACTION"}
 {"text": "i want to move window to workspace 6 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you toggle nightlight now", "intent": "SYSTEM_ACTION"}
 {"text": "could you show me browser please", "intent": "HYPR_FOCUS"}
 {"text": "quick switch to workspace 1 thanks", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis resume video for me", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva resume video for me", "intent": "MEDIA_CONTROL"}
 {"text": "can you unfloat window thanks", "intent": "HYPR_WINDOW"}
 {"text": "please focus spotify", "intent": "HYPR_FOCUS"}
 {"text": "um switch to workspace 2 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "can you lock computer", "intent": "SYSTEM_ACTION"}
 {"text": "i want to open terminal right now", "intent": "APP_LAUNCH"}
 {"text": "go ahead and launch terminal for me", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis turn on night light", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva turn on night light", "intent": "SYSTEM_ACTION"}
 {"text": "um can you write a python script for this for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "set volume to 90 percent thanks", "intent": "AUDIO_CONTROL"}
 {"text": "uh skip track right now", "intent": "MEDIA_CONTROL"}
 {"text": "um write a bash script to clean up docker containers please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "new terminal window please", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis open desktop -1 right now", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva open desktop -1 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "i want to resume video", "intent": "MEDIA_CONTROL"}
 {"text": "i want to go to workspace 6 now", "intent": "HYPR_WORKSPACE"}
 {"text": "um put this on workspace 7 now", "intent": "HYPR_WINDOW_MOVE"}
@@ -214,7 +214,7 @@
 {"text": "uh new terminal window right now", "intent": "APP_LAUNCH"}
 {"text": "i want to focus discord thanks", "intent": "HYPR_FOCUS"}
 {"text": "could you set volume to 20 percent now", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis next song", "intent": "MEDIA_CONTROL"}
+{"text": "eva next song", "intent": "MEDIA_CONTROL"}
 {"text": "could you skip track now", "intent": "MEDIA_CONTROL"}
 {"text": "could you switch to ghostty right now", "intent": "HYPR_FOCUS"}
 {"text": "um close window thanks", "intent": "HYPR_WINDOW"}
@@ -223,19 +223,19 @@
 {"text": "go ahead and organize my workspace windows into a 3-way vertical split thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh send window to desktop 9", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to open desktop 7 for me", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis next track", "intent": "MEDIA_CONTROL"}
+{"text": "eva next track", "intent": "MEDIA_CONTROL"}
 {"text": "i want to toggle fullscreen right now", "intent": "HYPR_WINDOW"}
 {"text": "i want to open files for me", "intent": "APP_LAUNCH"}
 {"text": "resume video thanks", "intent": "MEDIA_CONTROL"}
 {"text": "can you unfloat window right now", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis send window to desktop 10 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva send window to desktop 10 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "quick send window to desktop 9", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "turn off night light thanks", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and kill active window for me", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis next workspace right now", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva next workspace right now", "intent": "HYPR_WORKSPACE"}
 {"text": "uh take screenshot thanks", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis pause video thanks", "intent": "MEDIA_CONTROL"}
-{"text": "jarvis maximize window right now", "intent": "HYPR_WINDOW"}
+{"text": "eva pause video thanks", "intent": "MEDIA_CONTROL"}
+{"text": "eva maximize window right now", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and turn on night light", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and explain how memory management works in linux for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "go ahead and open file manager", "intent": "APP_LAUNCH"}
@@ -258,34 +258,34 @@
 {"text": "please focus foot right now", "intent": "HYPR_FOCUS"}
 {"text": "go ahead and open desktop 4 now", "intent": "HYPR_WORKSPACE"}
 {"text": "please how do I configure wireguard on arch linux", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis toggle fullscreen right now", "intent": "HYPR_WINDOW"}
+{"text": "hey eva toggle fullscreen right now", "intent": "HYPR_WINDOW"}
 {"text": "please tell me why my sound is not working", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick open desktop 10 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "uh move window to workspace 9 now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis float this window thanks", "intent": "HYPR_WINDOW"}
+{"text": "hey eva float this window thanks", "intent": "HYPR_WINDOW"}
 {"text": "please turn it up", "intent": "AUDIO_CONTROL"}
 {"text": "uh go to workspace 1 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "uh make this fullscreen", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and screenshot whole screen", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis jump to workspace 5 please", "intent": "HYPR_WORKSPACE"}
+{"text": "eva jump to workspace 5 please", "intent": "HYPR_WORKSPACE"}
 {"text": "can you switch to brave thanks", "intent": "HYPR_FOCUS"}
-{"text": "jarvis open editor please", "intent": "APP_LAUNCH"}
+{"text": "eva open editor please", "intent": "APP_LAUNCH"}
 {"text": "uh toggle floating", "intent": "HYPR_WINDOW"}
-{"text": "jarvis can you write a python script for this for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva can you write a python script for this for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh quit this window right now", "intent": "HYPR_WINDOW"}
-{"text": "jarvis explain quantum computing to me right now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva explain quantum computing to me right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "go ahead and bring up slack right now", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis unfloat window now", "intent": "HYPR_WINDOW"}
+{"text": "hey eva unfloat window now", "intent": "HYPR_WINDOW"}
 {"text": "please transfer window to workspace 5 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to open editor", "intent": "APP_LAUNCH"}
 {"text": "i want to how do I configure wireguard on arch linux now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis can you write a python script for this please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva can you write a python script for this please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you switch to workspace 10 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "please set volume to 10 percent now", "intent": "AUDIO_CONTROL"}
 {"text": "please put this on workspace 9 right now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis why is the bluetooth daemon failing? thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva why is the bluetooth daemon failing? thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um focus obsidian right now", "intent": "HYPR_FOCUS"}
-{"text": "jarvis show me neovim for me", "intent": "HYPR_FOCUS"}
+{"text": "eva show me neovim for me", "intent": "HYPR_FOCUS"}
 {"text": "go ahead and quit this window for me", "intent": "HYPR_WINDOW"}
 {"text": "uh go to workspace 4 now", "intent": "HYPR_WORKSPACE"}
 {"text": "can you open terminal now", "intent": "APP_LAUNCH"}
@@ -294,7 +294,7 @@
 {"text": "could you toggle window split now", "intent": "HYPR_WINDOW"}
 {"text": "hold playback for me", "intent": "MEDIA_CONTROL"}
 {"text": "set volume to 100 percent", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis turn it down now", "intent": "AUDIO_CONTROL"}
+{"text": "eva turn it down now", "intent": "AUDIO_CONTROL"}
 {"text": "i want to why is the bluetooth daemon failing? for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um lock workstation right now", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and focus foot", "intent": "HYPR_FOCUS"}
@@ -305,18 +305,18 @@
 {"text": "please volume up right now", "intent": "AUDIO_CONTROL"}
 {"text": "i want to close window for me", "intent": "HYPR_WINDOW"}
 {"text": "quick volume 90 right now", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis mute audio", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis resume video thanks", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva mute audio", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva resume video thanks", "intent": "MEDIA_CONTROL"}
 {"text": "can you fullscreen screenshot please", "intent": "SYSTEM_ACTION"}
 {"text": "fullscreen screenshot thanks", "intent": "SYSTEM_ACTION"}
 {"text": "bring up foot", "intent": "HYPR_FOCUS"}
-{"text": "jarvis transfer window to workspace 1 now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva transfer window to workspace 1 now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "please bring up firefox for me", "intent": "HYPR_FOCUS"}
 {"text": "could you open file manager now", "intent": "APP_LAUNCH"}
-{"text": "jarvis put this on workspace 1 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva put this on workspace 1 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to pause video now", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and write a bash script to clean up docker containers", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis move window to workspace 4 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva move window to workspace 4 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh show me terminal please", "intent": "HYPR_FOCUS"}
 {"text": "could you turn on night light right now", "intent": "SYSTEM_ACTION"}
 {"text": "transfer window to workspace 8", "intent": "HYPR_WINDOW_MOVE"}
@@ -328,7 +328,7 @@
 {"text": "i want to play music now", "intent": "MEDIA_CONTROL"}
 {"text": "screenshot whole screen thanks", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and go to workspace 9 please", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis can you write a python script for this for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva can you write a python script for this for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you make it louder thanks", "intent": "AUDIO_CONTROL"}
 {"text": "go ahead and volume 100 right now", "intent": "AUDIO_CONTROL"}
 {"text": "uh open files now", "intent": "APP_LAUNCH"}
@@ -337,10 +337,10 @@
 {"text": "can you fullscreen screenshot", "intent": "SYSTEM_ACTION"}
 {"text": "uh jump to workspace -1 please", "intent": "HYPR_WORKSPACE"}
 {"text": "please switch to workspace 4 for me", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis move window to workspace 8 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva move window to workspace 8 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh toggle nightlight right now", "intent": "SYSTEM_ACTION"}
 {"text": "can you send window to desktop 2 for me", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis set volume to 60 percent now", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva set volume to 60 percent now", "intent": "AUDIO_CONTROL"}
 {"text": "hold playback please", "intent": "MEDIA_CONTROL"}
 {"text": "quick mute audio thanks", "intent": "AUDIO_CONTROL"}
 {"text": "could you capture screenshot thanks", "intent": "SYSTEM_ACTION"}
@@ -350,15 +350,15 @@
 {"text": "mute mic thanks", "intent": "AUDIO_CONTROL"}
 {"text": "go ahead and make this fullscreen now", "intent": "HYPR_WINDOW"}
 {"text": "quick focus firefox right now", "intent": "HYPR_FOCUS"}
-{"text": "jarvis bring up neovim for me", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis capture screenshot thanks", "intent": "SYSTEM_ACTION"}
+{"text": "eva bring up neovim for me", "intent": "HYPR_FOCUS"}
+{"text": "hey eva capture screenshot thanks", "intent": "SYSTEM_ACTION"}
 {"text": "quick show me spotify please", "intent": "HYPR_FOCUS"}
 {"text": "i want to move window to workspace 6 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "jump to workspace 8 now", "intent": "HYPR_WORKSPACE"}
 {"text": "quick set volume to 90 percent now", "intent": "AUDIO_CONTROL"}
 {"text": "could you maximize window right now", "intent": "HYPR_WINDOW"}
 {"text": "transfer window to workspace 6 please", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis quieter now", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva quieter now", "intent": "AUDIO_CONTROL"}
 {"text": "quick launch neovim right now", "intent": "APP_LAUNCH"}
 {"text": "can you turn off night light please", "intent": "SYSTEM_ACTION"}
 {"text": "could you open desktop 1", "intent": "HYPR_WORKSPACE"}
@@ -366,11 +366,11 @@
 {"text": "uh move window to workspace 6 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh pause music thanks", "intent": "MEDIA_CONTROL"}
 {"text": "i want to search the web for modernbert benchmark scores right now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis screenshot region for me", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis maximize window right now", "intent": "HYPR_WINDOW"}
+{"text": "hey eva screenshot region for me", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva maximize window right now", "intent": "HYPR_WINDOW"}
 {"text": "can you open desktop 10 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "next track", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis bring up kitty now", "intent": "HYPR_FOCUS"}
+{"text": "hey eva bring up kitty now", "intent": "HYPR_FOCUS"}
 {"text": "could you next song right now", "intent": "MEDIA_CONTROL"}
 {"text": "i want to open desktop 9 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "go ahead and put this on workspace 1", "intent": "HYPR_WINDOW_MOVE"}
@@ -379,19 +379,19 @@
 {"text": "go ahead and open desktop 3 please", "intent": "HYPR_WORKSPACE"}
 {"text": "i want to kill active window for me", "intent": "HYPR_WINDOW"}
 {"text": "can you show me terminal", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis capture full screen", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva capture full screen", "intent": "SYSTEM_ACTION"}
 {"text": "quick quit this window for me", "intent": "HYPR_WINDOW"}
 {"text": "previous track for me", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis check system logs for kernel panics please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva check system logs for kernel panics please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "open browser for me", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis volume 30", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis open files please", "intent": "APP_LAUNCH"}
+{"text": "hey eva volume 30", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva open files please", "intent": "APP_LAUNCH"}
 {"text": "go ahead and open terminal please", "intent": "APP_LAUNCH"}
 {"text": "could you send window to desktop 3 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "quick focus foot thanks", "intent": "HYPR_FOCUS"}
-{"text": "jarvis move window to workspace 2 now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva move window to workspace 2 now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "please pause playback right now", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis open file manager thanks", "intent": "APP_LAUNCH"}
+{"text": "hey eva open file manager thanks", "intent": "APP_LAUNCH"}
 {"text": "um launch neovim please", "intent": "APP_LAUNCH"}
 {"text": "can you mute mic thanks", "intent": "AUDIO_CONTROL"}
 {"text": "uh volume up right now", "intent": "AUDIO_CONTROL"}
@@ -403,14 +403,14 @@
 {"text": "go ahead and why is the bluetooth daemon failing? for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you hold playback right now", "intent": "MEDIA_CONTROL"}
 {"text": "find the terminal with the failing build and restart it thanks", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis toggle playback thanks", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva toggle playback thanks", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and bring up chrome", "intent": "HYPR_FOCUS"}
 {"text": "please new terminal window right now", "intent": "APP_LAUNCH"}
 {"text": "go ahead and open browser right now", "intent": "APP_LAUNCH"}
 {"text": "can you send window to desktop 2 now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "quick launch neovim thanks", "intent": "APP_LAUNCH"}
 {"text": "could you go to workspace 3 right now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis make it louder right now", "intent": "AUDIO_CONTROL"}
+{"text": "eva make it louder right now", "intent": "AUDIO_CONTROL"}
 {"text": "go ahead and open desktop +1 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "could you move window to workspace 2 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh volume 100 right now", "intent": "AUDIO_CONTROL"}
@@ -419,7 +419,7 @@
 {"text": "quick unfloat window now", "intent": "HYPR_WINDOW"}
 {"text": "please how do I configure wireguard on arch linux thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh organize my workspace windows into a 3-way vertical split right now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis open editor thanks", "intent": "APP_LAUNCH"}
+{"text": "hey eva open editor thanks", "intent": "APP_LAUNCH"}
 {"text": "could you toggle window split thanks", "intent": "HYPR_WINDOW"}
 {"text": "can you move window to workspace 4", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you launch neovim right now", "intent": "APP_LAUNCH"}
@@ -429,20 +429,20 @@
 {"text": "could you open files", "intent": "APP_LAUNCH"}
 {"text": "quick open desktop 3 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "could you lock computer", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis open desktop +1 please", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis explain how memory management works in linux please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva open desktop +1 please", "intent": "HYPR_WORKSPACE"}
+{"text": "eva explain how memory management works in linux please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to bring up brave please", "intent": "HYPR_FOCUS"}
-{"text": "jarvis send window to desktop 10 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva send window to desktop 10 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "can you resume video right now", "intent": "MEDIA_CONTROL"}
 {"text": "quick open files please", "intent": "APP_LAUNCH"}
 {"text": "um hold playback now", "intent": "MEDIA_CONTROL"}
-{"text": "jarvis switch to workspace +1 now", "intent": "HYPR_WORKSPACE"}
+{"text": "eva switch to workspace +1 now", "intent": "HYPR_WORKSPACE"}
 {"text": "please launch neovim thanks", "intent": "APP_LAUNCH"}
 {"text": "go ahead and check system logs for kernel panics", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you go to workspace 8 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "could you volume 20", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis close window", "intent": "HYPR_WINDOW"}
-{"text": "jarvis set volume to 80 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva close window", "intent": "HYPR_WINDOW"}
+{"text": "eva set volume to 80 percent for me", "intent": "AUDIO_CONTROL"}
 {"text": "quick screenshot whole screen", "intent": "SYSTEM_ACTION"}
 {"text": "uh maximize window", "intent": "HYPR_WINDOW"}
 {"text": "quick go to workspace 6 for me", "intent": "HYPR_WORKSPACE"}
@@ -451,22 +451,22 @@
 {"text": "please open editor right now", "intent": "APP_LAUNCH"}
 {"text": "can you send window to desktop 9 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "can you jump to workspace +1 thanks", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis next workspace", "intent": "HYPR_WORKSPACE"}
+{"text": "eva next workspace", "intent": "HYPR_WORKSPACE"}
 {"text": "i want to summarize the latest git commits right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to hold playback please", "intent": "MEDIA_CONTROL"}
 {"text": "quick turn off night light for me", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis lock screen please", "intent": "SYSTEM_ACTION"}
+{"text": "eva lock screen please", "intent": "SYSTEM_ACTION"}
 {"text": "i want to switch to workspace 7 please", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis toggle window split thanks", "intent": "HYPR_WINDOW"}
+{"text": "eva toggle window split thanks", "intent": "HYPR_WINDOW"}
 {"text": "show me ghostty right now", "intent": "HYPR_FOCUS"}
 {"text": "can you jump to workspace 8 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "explain the difference between ModernBERT and RoBERTa now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick focus kitty now", "intent": "HYPR_FOCUS"}
 {"text": "um lock workstation for me", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis unmute microphone for me", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva unmute microphone for me", "intent": "AUDIO_CONTROL"}
 {"text": "hold playback", "intent": "MEDIA_CONTROL"}
 {"text": "please volume up please", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis kill active window right now", "intent": "HYPR_WINDOW"}
+{"text": "hey eva kill active window right now", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and explain quantum computing to me right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you skip track right now", "intent": "MEDIA_CONTROL"}
 {"text": "could you turn off night light for me", "intent": "SYSTEM_ACTION"}
@@ -474,14 +474,14 @@
 {"text": "new terminal window now", "intent": "APP_LAUNCH"}
 {"text": "please bring up foot", "intent": "HYPR_FOCUS"}
 {"text": "can you mute microphone for me", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis launch terminal for me", "intent": "APP_LAUNCH"}
-{"text": "jarvis lock computer for me", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva launch terminal for me", "intent": "APP_LAUNCH"}
+{"text": "eva lock computer for me", "intent": "SYSTEM_ACTION"}
 {"text": "please open file manager", "intent": "APP_LAUNCH"}
 {"text": "uh toggle window split thanks", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and switch to chrome", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis transfer window to workspace 6", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva transfer window to workspace 6", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "um switch to terminal right now", "intent": "HYPR_FOCUS"}
-{"text": "jarvis screenshot region please", "intent": "SYSTEM_ACTION"}
+{"text": "eva screenshot region please", "intent": "SYSTEM_ACTION"}
 {"text": "can you show me slack", "intent": "HYPR_FOCUS"}
 {"text": "please kill active window thanks", "intent": "HYPR_WINDOW"}
 {"text": "open terminal now", "intent": "APP_LAUNCH"}
@@ -490,12 +490,12 @@
 {"text": "i want to previous track thanks", "intent": "MEDIA_CONTROL"}
 {"text": "could you set volume to 70 percent now", "intent": "AUDIO_CONTROL"}
 {"text": "please put this on workspace 5 right now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "jarvis resume playback thanks", "intent": "MEDIA_CONTROL"}
+{"text": "eva resume playback thanks", "intent": "MEDIA_CONTROL"}
 {"text": "i want to previous track for me", "intent": "MEDIA_CONTROL"}
 {"text": "i want to explain the difference between ModernBERT and RoBERTa for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick take screenshot right now", "intent": "SYSTEM_ACTION"}
 {"text": "um turn off night light now", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis switch to workspace 6 for me", "intent": "HYPR_WORKSPACE"}
+{"text": "eva switch to workspace 6 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "could you lock workstation now", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and go to workspace -1 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "can you switch to workspace 6 for me", "intent": "HYPR_WORKSPACE"}
@@ -503,18 +503,18 @@
 {"text": "could you show me chrome please", "intent": "HYPR_FOCUS"}
 {"text": "can you transfer window to workspace 5 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you jump to workspace 8", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis show me browser please", "intent": "HYPR_FOCUS"}
+{"text": "eva show me browser please", "intent": "HYPR_FOCUS"}
 {"text": "bring up terminal please", "intent": "HYPR_FOCUS"}
 {"text": "um quit this window right now", "intent": "HYPR_WINDOW"}
 {"text": "put this on workspace 1", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "organize my workspace windows into a 3-way vertical split thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick open file manager", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis lock screen right now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva lock screen right now", "intent": "SYSTEM_ACTION"}
 {"text": "quick open file manager right now", "intent": "APP_LAUNCH"}
 {"text": "can you toggle window split right now", "intent": "HYPR_WINDOW"}
 {"text": "uh pause music now", "intent": "MEDIA_CONTROL"}
 {"text": "i want to unmute mic right now", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis lock workstation right now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva lock workstation right now", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and toggle nightlight for me", "intent": "SYSTEM_ACTION"}
 {"text": "please switch to ghostty now", "intent": "HYPR_FOCUS"}
 {"text": "i want to capture full screen thanks", "intent": "SYSTEM_ACTION"}
@@ -523,7 +523,7 @@
 {"text": "um open file manager now", "intent": "APP_LAUNCH"}
 {"text": "could you put this on workspace 7 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you volume 100 thanks", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis switch to workspace 10 for me", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva switch to workspace 10 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "go to workspace 10 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "uh search the web for modernbert benchmark scores for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh send window to desktop 2 right now", "intent": "HYPR_WINDOW_MOVE"}
@@ -534,33 +534,33 @@
 {"text": "show me foot", "intent": "HYPR_FOCUS"}
 {"text": "i want to organize my workspace windows into a 3-way vertical split for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "fullscreen screenshot right now", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis jump to workspace 2 please", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis put this on workspace 4 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva jump to workspace 2 please", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva put this on workspace 4 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "quick kill active window for me", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and pause music for me", "intent": "MEDIA_CONTROL"}
 {"text": "uh transfer window to workspace 7 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "please bring up firefox thanks", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis turn on night light please", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva turn on night light please", "intent": "SYSTEM_ACTION"}
 {"text": "uh skip track", "intent": "MEDIA_CONTROL"}
-{"text": "jarvis hold playback for me", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis volume up please", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis put this on workspace 8", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva hold playback for me", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva volume up please", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva put this on workspace 8", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "explain how memory management works in linux now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis volume 60 thanks", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva volume 60 thanks", "intent": "AUDIO_CONTROL"}
 {"text": "toggle fullscreen", "intent": "HYPR_WINDOW"}
 {"text": "toggle floating", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and close window right now", "intent": "HYPR_WINDOW"}
 {"text": "can you switch to neovim right now", "intent": "HYPR_FOCUS"}
 {"text": "please focus ghostty right now", "intent": "HYPR_FOCUS"}
 {"text": "i want to open file manager right now", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis toggle fullscreen please", "intent": "HYPR_WINDOW"}
+{"text": "hey eva toggle fullscreen please", "intent": "HYPR_WINDOW"}
 {"text": "please turn it down for me", "intent": "AUDIO_CONTROL"}
 {"text": "uh open desktop 2 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "go to workspace 4 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "show me brave for me", "intent": "HYPR_FOCUS"}
 {"text": "can you focus chrome now", "intent": "HYPR_FOCUS"}
 {"text": "could you put this on workspace 10 thanks", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis next song please", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva next song please", "intent": "MEDIA_CONTROL"}
 {"text": "i want to set volume to 90 percent now", "intent": "AUDIO_CONTROL"}
 {"text": "um previous track please", "intent": "MEDIA_CONTROL"}
 {"text": "quick open file manager please", "intent": "APP_LAUNCH"}
@@ -571,12 +571,12 @@
 {"text": "um make this fullscreen now", "intent": "HYPR_WINDOW"}
 {"text": "uh capture full screen please", "intent": "SYSTEM_ACTION"}
 {"text": "quick volume up now", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis lock computer", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva lock computer", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and set volume to 20 percent thanks", "intent": "AUDIO_CONTROL"}
 {"text": "explain quantum computing to me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick unfloat window thanks", "intent": "HYPR_WINDOW"}
 {"text": "quick close window please", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis close this window right now", "intent": "HYPR_WINDOW"}
+{"text": "hey eva close this window right now", "intent": "HYPR_WINDOW"}
 {"text": "i want to volume up right now", "intent": "AUDIO_CONTROL"}
 {"text": "go ahead and close window now", "intent": "HYPR_WINDOW"}
 {"text": "quick tell me why my sound is not working right now", "intent": "ESCALATE_GENERATIVE"}
@@ -584,16 +584,16 @@
 {"text": "um open file manager", "intent": "APP_LAUNCH"}
 {"text": "please check system logs for kernel panics please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "send window to desktop 5", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "jarvis kill active window now", "intent": "HYPR_WINDOW"}
+{"text": "eva kill active window now", "intent": "HYPR_WINDOW"}
 {"text": "could you tell me why my sound is not working for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you close window", "intent": "HYPR_WINDOW"}
 {"text": "resume video right now", "intent": "MEDIA_CONTROL"}
 {"text": "please find the terminal with the failing build and restart it now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you focus neovim right now", "intent": "HYPR_FOCUS"}
 {"text": "uh mute microphone", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis go to workspace +1 right now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis float this window please", "intent": "HYPR_WINDOW"}
-{"text": "jarvis tell me why my sound is not working now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva go to workspace +1 right now", "intent": "HYPR_WORKSPACE"}
+{"text": "eva float this window please", "intent": "HYPR_WINDOW"}
+{"text": "eva tell me why my sound is not working now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um move window to workspace 10", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "quick previous workspace", "intent": "HYPR_WORKSPACE"}
 {"text": "go ahead and switch to firefox right now", "intent": "HYPR_FOCUS"}
@@ -613,9 +613,9 @@
 {"text": "uh capture full screen now", "intent": "SYSTEM_ACTION"}
 {"text": "uh send window to desktop 1 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh open desktop 8 now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis open terminal for me", "intent": "APP_LAUNCH"}
+{"text": "hey eva open terminal for me", "intent": "APP_LAUNCH"}
 {"text": "quick volume 80", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis go to workspace 3 please", "intent": "HYPR_WORKSPACE"}
+{"text": "eva go to workspace 3 please", "intent": "HYPR_WORKSPACE"}
 {"text": "could you send window to desktop 10 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "can you how do I configure wireguard on arch linux please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you launch browser for me", "intent": "APP_LAUNCH"}
@@ -625,18 +625,18 @@
 {"text": "please launch terminal for me", "intent": "APP_LAUNCH"}
 {"text": "could you tell me why my sound is not working please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh switch to workspace 6 now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis go to workspace 3", "intent": "HYPR_WORKSPACE"}
+{"text": "hey eva go to workspace 3", "intent": "HYPR_WORKSPACE"}
 {"text": "go ahead and why is the bluetooth daemon failing? please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you screenshot whole screen", "intent": "SYSTEM_ACTION"}
 {"text": "quick what is the best way to optimize battery life on hyprland thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh switch to neovim right now", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis put this on workspace 9 now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis skip track now", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva put this on workspace 9 now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva skip track now", "intent": "MEDIA_CONTROL"}
 {"text": "put this on workspace 6", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you put this on workspace 5 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh go to workspace 2", "intent": "HYPR_WORKSPACE"}
 {"text": "please jump to workspace 7 for me", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis capture full screen", "intent": "SYSTEM_ACTION"}
+{"text": "eva capture full screen", "intent": "SYSTEM_ACTION"}
 {"text": "i want to explain quantum computing to me please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "screenshot region now", "intent": "SYSTEM_ACTION"}
 {"text": "can you launch browser please", "intent": "APP_LAUNCH"}
@@ -644,7 +644,7 @@
 {"text": "can you turn it up now", "intent": "AUDIO_CONTROL"}
 {"text": "can you transfer window to workspace 7 now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to tell me why my sound is not working right now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis screenshot whole screen now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva screenshot whole screen now", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and previous song thanks", "intent": "MEDIA_CONTROL"}
 {"text": "quick pause playback now", "intent": "MEDIA_CONTROL"}
 {"text": "can you jump to workspace 8 thanks", "intent": "HYPR_WORKSPACE"}
@@ -659,24 +659,24 @@
 {"text": "please put this on workspace 5 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "can you open files thanks", "intent": "APP_LAUNCH"}
 {"text": "um open browser", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis volume down right now", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis transfer window to workspace 5", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "jarvis move window to workspace 1 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva volume down right now", "intent": "AUDIO_CONTROL"}
+{"text": "eva transfer window to workspace 5", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva move window to workspace 1 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "um play music thanks", "intent": "MEDIA_CONTROL"}
 {"text": "make this fullscreen thanks", "intent": "HYPR_WINDOW"}
 {"text": "could you go to workspace 3 now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis lock workstation right now", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis write a bash script to clean up docker containers thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva lock workstation right now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva write a bash script to clean up docker containers thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um pause video for me", "intent": "MEDIA_CONTROL"}
 {"text": "please open editor now", "intent": "APP_LAUNCH"}
 {"text": "please toggle nightlight thanks", "intent": "SYSTEM_ACTION"}
 {"text": "can you show me browser thanks", "intent": "HYPR_FOCUS"}
 {"text": "i want to lock workstation thanks", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis volume 30 please", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva volume 30 please", "intent": "AUDIO_CONTROL"}
 {"text": "i want to volume down now", "intent": "AUDIO_CONTROL"}
 {"text": "quick toggle nightlight please", "intent": "SYSTEM_ACTION"}
 {"text": "uh open terminal for me", "intent": "APP_LAUNCH"}
-{"text": "hey jarvis explain quantum computing to me right now", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva explain quantum computing to me right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you lock workstation for me", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and play music right now", "intent": "MEDIA_CONTROL"}
 {"text": "uh explain quantum computing to me now", "intent": "ESCALATE_GENERATIVE"}
@@ -691,13 +691,13 @@
 {"text": "quick unmute microphone please", "intent": "AUDIO_CONTROL"}
 {"text": "unfloat window now", "intent": "HYPR_WINDOW"}
 {"text": "uh switch to neovim", "intent": "HYPR_FOCUS"}
-{"text": "jarvis send window to desktop 3 for me", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis jump to workspace 3", "intent": "HYPR_WORKSPACE"}
+{"text": "eva send window to desktop 3 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva jump to workspace 3", "intent": "HYPR_WORKSPACE"}
 {"text": "jump to workspace 10 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "um how do I configure wireguard on arch linux for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um bring up obsidian thanks", "intent": "HYPR_FOCUS"}
 {"text": "previous track right now", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis take screenshot for me", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva take screenshot for me", "intent": "SYSTEM_ACTION"}
 {"text": "please pause playback", "intent": "MEDIA_CONTROL"}
 {"text": "could you find the terminal with the failing build and restart it please", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to fullscreen screenshot now", "intent": "SYSTEM_ACTION"}
@@ -709,7 +709,7 @@
 {"text": "uh show me foot thanks", "intent": "HYPR_FOCUS"}
 {"text": "can you screenshot whole screen now", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and focus chrome please", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis set volume to 50 percent please", "intent": "AUDIO_CONTROL"}
+{"text": "hey eva set volume to 50 percent please", "intent": "AUDIO_CONTROL"}
 {"text": "could you send window to desktop 5 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "next track for me", "intent": "MEDIA_CONTROL"}
 {"text": "quick launch neovim please", "intent": "APP_LAUNCH"}
@@ -724,24 +724,24 @@
 {"text": "quick switch to workspace 9", "intent": "HYPR_WORKSPACE"}
 {"text": "launch terminal right now", "intent": "APP_LAUNCH"}
 {"text": "um toggle window split", "intent": "HYPR_WINDOW"}
-{"text": "jarvis hold playback thanks", "intent": "MEDIA_CONTROL"}
+{"text": "eva hold playback thanks", "intent": "MEDIA_CONTROL"}
 {"text": "uh play music", "intent": "MEDIA_CONTROL"}
 {"text": "um toggle window split right now", "intent": "HYPR_WINDOW"}
 {"text": "quick pause video", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis screenshot region thanks", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva screenshot region thanks", "intent": "SYSTEM_ACTION"}
 {"text": "go ahead and kill active window please", "intent": "HYPR_WINDOW"}
 {"text": "uh screenshot region thanks", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis put this on workspace 2 thanks", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva put this on workspace 2 thanks", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "could you transfer window to workspace 7 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "please skip song right now", "intent": "MEDIA_CONTROL"}
 {"text": "um explain quantum computing to me now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "um lock screen please", "intent": "SYSTEM_ACTION"}
 {"text": "could you focus obsidian thanks", "intent": "HYPR_FOCUS"}
-{"text": "hey jarvis open file manager", "intent": "APP_LAUNCH"}
+{"text": "hey eva open file manager", "intent": "APP_LAUNCH"}
 {"text": "i want to volume 20 right now", "intent": "AUDIO_CONTROL"}
 {"text": "um find the terminal with the failing build and restart it", "intent": "ESCALATE_GENERATIVE"}
 {"text": "i want to why is the bluetooth daemon failing? now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis put this on workspace 8 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "eva put this on workspace 8 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to jump to workspace 8 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "play music right now", "intent": "MEDIA_CONTROL"}
 {"text": "i want to capture full screen right now", "intent": "SYSTEM_ACTION"}
@@ -750,18 +750,18 @@
 {"text": "volume 100 right now", "intent": "AUDIO_CONTROL"}
 {"text": "could you resume playback thanks", "intent": "MEDIA_CONTROL"}
 {"text": "could you jump to workspace 4 right now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis transfer window to workspace 4 please", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva transfer window to workspace 4 please", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "i want to close window please", "intent": "HYPR_WINDOW"}
 {"text": "could you switch back to former workspace for me", "intent": "HYPR_WORKSPACE"}
 {"text": "can you quit this window please", "intent": "HYPR_WINDOW"}
 {"text": "could you help me debug this rust compilation error", "intent": "ESCALATE_GENERATIVE"}
 {"text": "go ahead and kill active window right now", "intent": "HYPR_WINDOW"}
 {"text": "go ahead and open desktop 1 now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis open terminal", "intent": "APP_LAUNCH"}
+{"text": "eva open terminal", "intent": "APP_LAUNCH"}
 {"text": "can you write a python script for this", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis set volume to 90 percent for me", "intent": "AUDIO_CONTROL"}
+{"text": "eva set volume to 90 percent for me", "intent": "AUDIO_CONTROL"}
 {"text": "quick write a bash script to clean up docker containers for me", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis move window to workspace 9 for me", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva move window to workspace 9 for me", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "go ahead and turn off night light right now", "intent": "SYSTEM_ACTION"}
 {"text": "can you show me browser for me", "intent": "HYPR_FOCUS"}
 {"text": "please volume 70 please", "intent": "AUDIO_CONTROL"}
@@ -773,23 +773,23 @@
 {"text": "um resume video now", "intent": "MEDIA_CONTROL"}
 {"text": "i want to toggle mute please", "intent": "AUDIO_CONTROL"}
 {"text": "uh volume 10 right now", "intent": "AUDIO_CONTROL"}
-{"text": "jarvis switch to discord thanks", "intent": "HYPR_FOCUS"}
+{"text": "eva switch to discord thanks", "intent": "HYPR_FOCUS"}
 {"text": "quick pause video for me", "intent": "MEDIA_CONTROL"}
 {"text": "switch to workspace 4 for me", "intent": "HYPR_WORKSPACE"}
 {"text": "i want to switch to foot", "intent": "HYPR_FOCUS"}
 {"text": "i want to explain quantum computing to me now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis set volume to 40 percent right now", "intent": "AUDIO_CONTROL"}
+{"text": "eva set volume to 40 percent right now", "intent": "AUDIO_CONTROL"}
 {"text": "go ahead and make this fullscreen right now", "intent": "HYPR_WINDOW"}
 {"text": "i want to transfer window to workspace 4 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "go ahead and switch to workspace 7 right now", "intent": "HYPR_WORKSPACE"}
 {"text": "could you show me foot", "intent": "HYPR_FOCUS"}
 {"text": "uh switch to workspace 3 now", "intent": "HYPR_WORKSPACE"}
-{"text": "jarvis what is the best way to optimize battery life on hyprland for me", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva what is the best way to optimize battery life on hyprland for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "bring up firefox thanks", "intent": "HYPR_FOCUS"}
 {"text": "i want to set volume to 40 percent right now", "intent": "AUDIO_CONTROL"}
 {"text": "i want to turn off night light for me", "intent": "SYSTEM_ACTION"}
-{"text": "hey jarvis explain how memory management works in linux please", "intent": "ESCALATE_GENERATIVE"}
-{"text": "jarvis previous track right now", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva explain how memory management works in linux please", "intent": "ESCALATE_GENERATIVE"}
+{"text": "eva previous track right now", "intent": "MEDIA_CONTROL"}
 {"text": "please volume 50 right now", "intent": "AUDIO_CONTROL"}
 {"text": "um send window to desktop 10 right now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "uh go to workspace 10 for me", "intent": "HYPR_WORKSPACE"}
@@ -800,29 +800,29 @@
 {"text": "uh open editor", "intent": "APP_LAUNCH"}
 {"text": "focus discord now", "intent": "HYPR_FOCUS"}
 {"text": "i want to screenshot whole screen thanks", "intent": "SYSTEM_ACTION"}
-{"text": "jarvis skip song right now", "intent": "MEDIA_CONTROL"}
-{"text": "jarvis kill active window thanks", "intent": "HYPR_WINDOW"}
+{"text": "eva skip song right now", "intent": "MEDIA_CONTROL"}
+{"text": "eva kill active window thanks", "intent": "HYPR_WINDOW"}
 {"text": "switch to discord thanks", "intent": "HYPR_FOCUS"}
 {"text": "um switch to slack now", "intent": "HYPR_FOCUS"}
 {"text": "quick maximize window thanks", "intent": "HYPR_WINDOW"}
 {"text": "previous track thanks", "intent": "MEDIA_CONTROL"}
 {"text": "please set volume to 30 percent please", "intent": "AUDIO_CONTROL"}
 {"text": "um set volume to 30 percent please", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis resume video now", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva resume video now", "intent": "MEDIA_CONTROL"}
 {"text": "quick capture screenshot", "intent": "SYSTEM_ACTION"}
 {"text": "could you skip track for me", "intent": "MEDIA_CONTROL"}
-{"text": "hey jarvis can you write a python script for this thanks", "intent": "ESCALATE_GENERATIVE"}
+{"text": "hey eva can you write a python script for this thanks", "intent": "ESCALATE_GENERATIVE"}
 {"text": "go ahead and open editor thanks", "intent": "APP_LAUNCH"}
 {"text": "um explain how memory management works in linux now", "intent": "ESCALATE_GENERATIVE"}
-{"text": "hey jarvis move window to workspace 7 right now", "intent": "HYPR_WINDOW_MOVE"}
-{"text": "hey jarvis lock computer thanks", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva move window to workspace 7 right now", "intent": "HYPR_WINDOW_MOVE"}
+{"text": "hey eva lock computer thanks", "intent": "SYSTEM_ACTION"}
 {"text": "can you help me debug this rust compilation error for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "could you explain quantum computing to me for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "quick toggle nightlight thanks", "intent": "SYSTEM_ACTION"}
 {"text": "could you toggle floating thanks", "intent": "HYPR_WINDOW"}
 {"text": "uh explain the difference between ModernBERT and RoBERTa for me", "intent": "ESCALATE_GENERATIVE"}
 {"text": "can you go to workspace 6 right now", "intent": "HYPR_WORKSPACE"}
-{"text": "hey jarvis open browser", "intent": "APP_LAUNCH"}
+{"text": "hey eva open browser", "intent": "APP_LAUNCH"}
 {"text": "go ahead and unfloat window right now", "intent": "HYPR_WINDOW"}
 {"text": "please set volume to 30 percent right now", "intent": "AUDIO_CONTROL"}
 {"text": "uh pause music right now", "intent": "MEDIA_CONTROL"}
@@ -839,13 +839,13 @@
 {"text": "please find the terminal with the failing build and restart it", "intent": "ESCALATE_GENERATIVE"}
 {"text": "uh launch browser right now", "intent": "APP_LAUNCH"}
 {"text": "can you bring up slack", "intent": "HYPR_FOCUS"}
-{"text": "jarvis set volume to 80 percent please", "intent": "AUDIO_CONTROL"}
+{"text": "eva set volume to 80 percent please", "intent": "AUDIO_CONTROL"}
 {"text": "can you capture screenshot right now", "intent": "SYSTEM_ACTION"}
 {"text": "um go to workspace 3 now", "intent": "HYPR_WORKSPACE"}
 {"text": "resume video now", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and volume 90 thanks", "intent": "AUDIO_CONTROL"}
-{"text": "hey jarvis float this window please", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis next track thanks", "intent": "MEDIA_CONTROL"}
+{"text": "hey eva float this window please", "intent": "HYPR_WINDOW"}
+{"text": "hey eva next track thanks", "intent": "MEDIA_CONTROL"}
 {"text": "go ahead and open files for me", "intent": "APP_LAUNCH"}
 {"text": "go ahead and capture full screen please", "intent": "SYSTEM_ACTION"}
 {"text": "quick volume 10 please", "intent": "AUDIO_CONTROL"}
@@ -853,7 +853,7 @@
 {"text": "could you can you write a python script for this right now", "intent": "ESCALATE_GENERATIVE"}
 {"text": "open desktop +1 thanks", "intent": "HYPR_WORKSPACE"}
 {"text": "quick make this fullscreen please", "intent": "HYPR_WINDOW"}
-{"text": "hey jarvis lock screen now", "intent": "SYSTEM_ACTION"}
+{"text": "hey eva lock screen now", "intent": "SYSTEM_ACTION"}
 {"text": "please send window to desktop 8 now", "intent": "HYPR_WINDOW_MOVE"}
 {"text": "um mute mic please", "intent": "AUDIO_CONTROL"}
 {"text": "um launch browser now", "intent": "APP_LAUNCH"}

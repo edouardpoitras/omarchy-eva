@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis CLI: Voice trigger, status, and manual command dispatch for Omarchy."""
+"""Eva CLI: Voice trigger, status, and manual command dispatch for Omarchy."""
 
 import json
 import os
@@ -24,11 +24,11 @@ from core.dispatcher import CommandDispatcher
 from core.system1_laya import LayaDecisionEngine
 
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-SOCKET_PATH = os.path.join(RUNTIME_DIR, "jarvis", "ipc.sock")
+SOCKET_PATH = os.path.join(RUNTIME_DIR, "eva", "ipc.sock")
 
 
 def send_ipc(action: str, params: Optional[Dict[str, Any]] = None, timeout: float = 10.0) -> Optional[dict]:
-    """Send JSON-RPC request to the running Jarvis daemon."""
+    """Send JSON-RPC request to the running Eva daemon."""
     if not os.path.exists(SOCKET_PATH):
         return None
 
@@ -86,7 +86,7 @@ def is_daemon_alive() -> bool:
 def ensure_daemon():
     """Start daemon in background if not already active."""
     if not is_daemon_alive():
-        daemon_bin = os.path.join(REPO_ROOT, "bin", "omarchy-jarvis-daemon")
+        daemon_bin = os.path.join(REPO_ROOT, "bin", "omarchy-eva-daemon")
         subprocess.Popen(
             [VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable, daemon_bin],
             stdout=subprocess.DEVNULL,
@@ -107,15 +107,15 @@ def cmd_trigger():
         if resp.get("status") == "ok":
             state = resp.get("state", "")
             if state == "recording":
-                print("🎙️ Jarvis: Listening... (speak command now)")
+                print("🎙️ Eva: Listening... (speak command now)")
             else:
                 res = resp.get("result", {})
-                print(f"⚡ Jarvis executed: {resp.get('transcription', '')}")
+                print(f"⚡ Eva executed: {resp.get('transcription', '')}")
                 print(f"   Action: {res.get('action')} ({res.get('latency_ms', 0)}ms)")
         else:
-            print(f"Jarvis: {resp.get('message', resp.get('error', 'Unknown response'))}")
+            print(f"Eva: {resp.get('message', resp.get('error', 'Unknown response'))}")
     else:
-        print("Error: Could not communicate with Jarvis daemon.")
+        print("Error: Could not communicate with Eva daemon.")
         sys.exit(1)
 
 
@@ -124,7 +124,7 @@ def cmd_record_start():
     ensure_daemon()
     resp = send_ipc("record_start")
     if resp and resp.get("status") == "ok":
-        print("🎙️ Jarvis: Recording started.")
+        print("🎙️ Eva: Recording started.")
     else:
         print("Error starting recording.")
 
@@ -132,21 +132,21 @@ def cmd_record_start():
 def cmd_record_stop():
     """Stop voice recording and execute recognized command."""
     ensure_daemon()
-    print("⏳ Jarvis: Transcribing and executing...")
+    print("⏳ Eva: Transcribing and executing...")
     resp = send_ipc("record_stop")
     if resp and resp.get("status") == "ok":
         res = resp.get("result", {})
         print(f"⚡ Recognized: \"{resp.get('transcription', '')}\"")
         print(f"   Intent: {res.get('intent')} | Action: {res.get('action')} ({res.get('latency_ms', 0)}ms)")
     else:
-        print(f"Jarvis: {resp.get('message', 'Failed to transcribe speech.') if resp else 'No response.'}")
+        print(f"Eva: {resp.get('message', 'Failed to transcribe speech.') if resp else 'No response.'}")
 
 
 def cmd_exec(args: list[str]):
     """Execute raw text command directly or through daemon."""
     text = " ".join(args).strip()
     if not text:
-        print("Usage: omarchy-jarvis exec <command text>")
+        print("Usage: omarchy-eva exec <command text>")
         sys.exit(1)
 
     resp = send_ipc("execute_text", {"text": text}, timeout=10.0)
@@ -178,7 +178,7 @@ def cmd_classify(args: list[str]):
     """Run Laya non-autoregressive decision model over text."""
     text = " ".join(args).strip()
     if not text:
-        print("Usage: omarchy-jarvis classify <text>")
+        print("Usage: omarchy-eva classify <text>")
         sys.exit(1)
 
     # 1. Fast-path: query warm resident daemon over Unix socket (<30ms total)
@@ -191,7 +191,7 @@ def cmd_classify(args: list[str]):
     # 2. Standalone fallback (if daemon is not running)
     engine = LayaDecisionEngine()
     if not engine.is_ready:
-        print("[-] Laya decision model is not yet trained/exported. Run: omarchy-jarvis train")
+        print("[-] Laya decision model is not yet trained/exported. Run: omarchy-eva train")
         sys.exit(1)
 
     res = engine.predict(text)
@@ -218,15 +218,15 @@ def cmd_ask(args: list[str]):
     """Send complex or generative question to System 2 Agent with spoken reply."""
     text = " ".join(args).strip()
     if not text:
-        print("Usage: omarchy-jarvis ask <prompt...>")
+        print("Usage: omarchy-eva ask <prompt...>")
         sys.exit(1)
 
     ensure_daemon()
-    print(f"🤔 Jarvis deliberating: \"{text}\"...")
+    print(f"🤔 Eva deliberating: \"{text}\"...")
     resp = send_ipc("agent_prompt", {"text": text, "speak": True}, timeout=25.0)
     if resp and resp.get("status") == "ok":
         res = resp["result"]
-        print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+        print(f"🤖 Eva [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
         print(f"   \"{res.get('response')}\"")
         if res.get("requires_clarification"):
             print("   [Requires verbal clarification - listening...]")
@@ -236,7 +236,7 @@ def cmd_ask(args: list[str]):
     from core.system2_agent import System2Agent
     agent = System2Agent()
     res = agent.query(text, speak=True, block_speech=True)
-    print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+    print(f"🤖 Eva [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
     print(f"   \"{res.get('response')}\"")
     if agent.tts:
         agent.tts.wait_for_playback()
@@ -245,7 +245,7 @@ def cmd_ask(args: list[str]):
 def cmd_speak(args: list[str]):
     """Synthesize and play speech via Kokoro-82M neural TTS."""
     if not args:
-        print("Usage: omarchy-jarvis speak [--voice <id>] <text...>")
+        print("Usage: omarchy-eva speak [--voice <id>] <text...>")
         sys.exit(1)
 
     voice = None
@@ -258,13 +258,13 @@ def cmd_speak(args: list[str]):
     resp = send_ipc("speak", {"text": text, "voice": voice, "block": True}, timeout=15.0)
     if resp and resp.get("status") == "ok":
         res = resp["result"]
-        print(f"🗣️ Jarvis spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
+        print(f"🗣️ Eva spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
         return
 
     from core.tts_kokoro import KokoroTTS
     tts = KokoroTTS()
     res = tts.speak(text, voice=voice, block=True)
-    print(f"🗣️ Jarvis spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
+    print(f"🗣️ Eva spoke ({res.get('latency_ms', 0)}ms, {res.get('duration_sec', 0)}s): \"{text}\"")
 
 
 def cmd_voices():
@@ -292,13 +292,13 @@ def cmd_see(args: list[str]):
     """Inspect current screen with multimodal vision agent and speak response."""
     prompt = " ".join(args).strip() or "Describe what you see on my screen."
     ensure_daemon()
-    print(f"👀 Jarvis inspecting screen: \"{prompt}\"...")
+    print(f"👀 Eva inspecting screen: \"{prompt}\"...")
 
     resp = send_ipc("agent_vision", {"text": prompt, "speak": True}, timeout=25.0)
     if resp and resp.get("status") == "ok":
         res = resp["result"]
         print(f"📸 Frame: {res.get('image_path')} (capture: {res.get('vision_latency_ms', 0)}ms)")
-        print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+        print(f"🤖 Eva [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
         print(f"   \"{res.get('response')}\"")
         return
 
@@ -306,7 +306,7 @@ def cmd_see(args: list[str]):
     agent = System2Agent()
     res = agent.query_vision(prompt, speak=True, block_speech=True)
     print(f"📸 Frame: {res.get('image_path')} (capture: {res.get('vision_latency_ms', 0)}ms)")
-    print(f"🤖 Jarvis [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
+    print(f"🤖 Eva [{res.get('agent', 'agent').upper()}] ({res.get('latency_ms', 0)}ms):")
     print(f"   \"{res.get('response')}\"")
 
 
@@ -330,7 +330,7 @@ def cmd_screenshot(args: list[str]):
 def cmd_move(args: list[str]):
     """Move cursor with subtle human-like ease-out delay."""
     if len(args) < 2:
-        print("Usage: omarchy-jarvis move <x> <y> [--instant]")
+        print("Usage: omarchy-eva move <x> <y> [--instant]")
         sys.exit(1)
 
     try:
@@ -364,7 +364,7 @@ def cmd_click(args: list[str]):
         except ValueError:
             pass
 
-    # If non-numeric target passed (e.g. "omarchy-jarvis click 'About'" or "omarchy-jarvis click red button")
+    # If non-numeric target passed (e.g. "omarchy-eva click 'About'" or "omarchy-eva click red button")
     if pos is None and coords:
         target = " ".join(coords).strip()
         ensure_daemon()
@@ -532,7 +532,7 @@ def cmd_system(args: list[str]):
     elif sub == "time":
         res = sc.get_time_date()
     else:
-        print("Usage: omarchy-jarvis system <battery|disk|ram|ip|time|shutdown|reboot|suspend|lock|logout>")
+        print("Usage: omarchy-eva system <battery|disk|ram|ip|time|shutdown|reboot|suspend|lock|logout>")
         return
 
     if res.get("speech"):
@@ -651,7 +651,7 @@ def cmd_awareness():
     weather = data.get("last_weather", {})
     weather_str = f"{weather.get('description', 'Unknown')}, {weather.get('temp_c', '?')}°C" if weather else "N/A"
 
-    print("🛡️ Jarvis Proactive Awareness Engine:")
+    print("🛡️ Eva Proactive Awareness Engine:")
     print(f"   Status:        {'Active' if data.get('running') else 'Inactive'}")
     print(f"   Network:       {online_str}")
     print(f"   Weather:       {weather_str}")
@@ -673,8 +673,8 @@ def cmd_awareness():
 
 def cmd_alert(args: list[str]):
     """Trigger a proactive test alert with spoken announcement and HUD badge."""
-    msg = " ".join(args).strip() or "Sir, this is a proactive test alert from Jarvis."
-    title = "Jarvis Alert"
+    msg = " ".join(args).strip() or "Sir, this is a proactive test alert from Eva."
+    title = "Eva Alert"
     ensure_daemon()
     resp = send_ipc("proactive_alert", {"title": title, "message": msg, "speech": msg, "type": "warning"}, timeout=5.0)
     if resp and resp.get("status") == "ok":
@@ -686,7 +686,7 @@ def cmd_alert(args: list[str]):
 def cmd_type(args: list[str]):
     """Type text with subtle human keystroke cadence."""
     if not args:
-        print("Usage: omarchy-jarvis type <text...>")
+        print("Usage: omarchy-eva type <text...>")
         sys.exit(1)
 
     text = " ".join(args)
@@ -717,27 +717,66 @@ def cmd_sound(args: list[str]):
 
 def cmd_hud(args: list[str]):
     """Demonstrate floating Arc-Reactor HUD overlay."""
-    print("✨ Triggering Jarvis HUD demonstration...")
+    print("✨ Triggering Eva HUD demonstration...")
     ensure_daemon()
     resp = send_ipc("demo_hud", timeout=2.0)
     if resp and resp.get("status") == "ok":
         print("✨ HUD active: check your screen for the floating Arc-Reactor overlay.")
     else:
-        print("Jarvis daemon not active. Run 'omarchy-jarvis-daemon' or 'omarchy-jarvis trigger'.")
+        print("Eva daemon not active. Run 'omarchy-eva-daemon' or 'omarchy-eva trigger'.")
 
+
+
+def cmd_config(args: list):
+    """View or update Eva configuration."""
+    from core.config import eva_config
+    if not args or args[0] in ('show', 'list'):
+        cfg = eva_config.as_dict()
+        print('Eva Configuration (~/.config/eva/config.json):')
+        for k, v in cfg.items():
+            print(f'  {k:<16}: {v}')
+    elif args[0] == 'get':
+        if len(args) < 2:
+            print('Usage: omarchy-eva config get <key>')
+            sys.exit(1)
+        k = args[1]
+        print(f'{k}: {eva_config.get(k)}')
+    elif args[0] == 'set':
+        if len(args) < 3:
+            print('Usage: omarchy-eva config set <key> <value>')
+            sys.exit(1)
+        k = args[1]
+        v_raw = args[2]
+        if v_raw.lower() == 'true':
+            val = True
+        elif v_raw.lower() == 'false':
+            val = False
+        else:
+            try:
+                val = float(v_raw) if '.' in v_raw else int(v_raw)
+            except ValueError:
+                val = v_raw
+        eva_config.set(k, val)
+        send_ipc('set_config', {'key': k, 'value': val})
+        print(f'Set {k} = {val}')
+    elif args[0] == 'reset':
+        eva_config.reset()
+        print('Reset configuration to default settings.')
+    else:
+        print(f'Unknown config action: {args[0]}. Available: show, get, set, reset')
 
 def cmd_status():
     """Show daemon status and last executed command."""
     resp = send_ipc("get_status", timeout=1.0)
     if resp:
-        print(f"Jarvis Daemon: Active (Socket: {SOCKET_PATH})")
+        print(f"Eva Daemon: Active (Socket: {SOCKET_PATH})")
         print(f"State: {resp.get('state', 'unknown')}")
         print(f"Last Command: {resp.get('last_command', 'none')}")
         last_res = resp.get("last_result", {})
         if last_res:
             print(f"Last Action: {last_res.get('action')} ({last_res.get('latency_ms', 0)}ms)")
     else:
-        print(f"Jarvis Daemon: Inactive (Socket {SOCKET_PATH} not found)")
+        print(f"Eva Daemon: Inactive (Socket {SOCKET_PATH} not found)")
 
 
 def cmd_generate(args: list[str]):
@@ -766,13 +805,13 @@ def cmd_calibrate():
 def cmd_move_window(args: list[str]):
     """Move active window or named application to target workspace."""
     if not args:
-        print("Usage: omarchy-jarvis move-window [app_name] <workspace|another|next|prev>")
+        print("Usage: omarchy-eva move-window [app_name] <workspace|another|next|prev>")
         print("Examples:")
-        print("  omarchy-jarvis move-window 2")
-        print("  omarchy-jarvis move-window another")
-        print("  omarchy-jarvis move-window next")
-        print("  omarchy-jarvis move-window spotify 4")
-        print("  omarchy-jarvis move-window discord another")
+        print("  omarchy-eva move-window 2")
+        print("  omarchy-eva move-window another")
+        print("  omarchy-eva move-window next")
+        print("  omarchy-eva move-window spotify 4")
+        print("  omarchy-eva move-window discord another")
         return
 
     if len(args) == 1:
@@ -801,11 +840,11 @@ def cmd_move_window(args: list[str]):
 
 
 def cmd_info():
-    """Display Jarvis system identity, architecture, and live stats."""
+    """Display Eva system identity, architecture, and live stats."""
     from core.capabilities import capabilities_registry
     ident = capabilities_registry.get_identity()
     print("═" * 78)
-    print(" 🤖 OMARCHY JARVIS: SYSTEM IDENTITY & ARCHITECTURE")
+    print(" 🤖 OMARCHY EVA: SYSTEM IDENTITY & ARCHITECTURE")
     print("═" * 78)
     print(f"Name:             {ident['name']}")
     print(f"Role:             {ident['role']}")
@@ -832,52 +871,53 @@ def cmd_capabilities(args: list[str]):
 
 
 def print_help():
-    print("""Omarchy Jarvis Voice Automation CLI
+    print("""Omarchy Eva Voice Automation CLI
 
 Usage:
-  omarchy-jarvis trigger               Toggle voice recording (SUPER+SHIFT+CTRL+X)
-  omarchy-jarvis record-start          Start voice capture (push-to-talk press)
-  omarchy-jarvis record-stop           Stop voice capture & execute (push-to-talk release)
-  omarchy-jarvis exec <command...>     Directly execute command text
-  omarchy-jarvis ask <prompt...>       Deliberative System 2 reasoning with spoken reply
-  omarchy-jarvis see [prompt...]       Inspect screen with vision agent and speak response
-  omarchy-jarvis speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
-  omarchy-jarvis voices                List available Kokoro voices
-  omarchy-jarvis sound [name]          Play acoustic earcon (listening, success, deliberate, error)
-  omarchy-jarvis hud                   Demonstrate floating Arc-Reactor HUD overlay
-  omarchy-jarvis classify <text...>    Evaluate Laya decision model & calibrated confidence
-  omarchy-jarvis status                Show daemon status
+  omarchy-eva trigger               Toggle voice recording (SUPER+SHIFT+CTRL+X)
+  omarchy-eva record-start          Start voice capture (push-to-talk press)
+  omarchy-eva record-stop           Stop voice capture & execute (push-to-talk release)
+  omarchy-eva exec <command...>     Directly execute command text
+  omarchy-eva ask <prompt...>       Deliberative System 2 reasoning with spoken reply
+  omarchy-eva see [prompt...]       Inspect screen with vision agent and speak response
+  omarchy-eva speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
+  omarchy-eva voices                List available Kokoro voices
+  omarchy-eva sound [name]          Play acoustic earcon (listening, success, deliberate, error)
+  omarchy-eva hud                   Demonstrate floating Arc-Reactor HUD overlay
+  omarchy-eva classify <text...>    Evaluate Laya decision model & calibrated confidence
+  omarchy-eva status                Show daemon status
 
 System Overview & Capabilities:
-  omarchy-jarvis info                  Show Jarvis identity, architecture, and persona
-  omarchy-jarvis capabilities [domain] Display capabilities matrix or drill down into a domain
+  omarchy-eva config [get|set|show]    View or adjust Eva configuration settings
+  omarchy-eva info                  Show Eva identity, architecture, and persona
+  omarchy-eva capabilities [domain] Display capabilities matrix or drill down into a domain
 
 Reflex Desktop Controls & Telemetry:
-  omarchy-jarvis apps                  List indexed desktop applications
-  omarchy-jarvis move-window [app] <ws> Move active window or app to target workspace
-  omarchy-jarvis close [app_name]      Close specified application or active window
-  omarchy-jarvis top [--by cpu|memory] Show top resource-consuming processes
-  omarchy-jarvis audio [output|input|list] [dev] Switch audio output or mic
-  omarchy-jarvis wifi [list|connect|disconnect] Manage Wi-Fi connections
-  omarchy-jarvis bluetooth [list|connect|disc] Manage Bluetooth devices
-  omarchy-jarvis brightness [level|up|down] Adjust screen brightness
-  omarchy-jarvis display [list|scale]  Query displays or adjust scaling
-  omarchy-jarvis system <action>       Hardware telemetry & power (battery, disk, ram, ip, shutdown...)
-  omarchy-jarvis clipboard [read|clear] Read or clear Wayland clipboard
-  omarchy-jarvis awareness             Show background sentinel status (CPU, RAM, network, weather)
-  omarchy-jarvis alert [message...]    Trigger a proactive test alert
+  omarchy-eva apps                  List indexed desktop applications
+  omarchy-eva move-window [app] <ws> Move active window or app to target workspace
+  omarchy-eva close [app_name]      Close specified application or active window
+  omarchy-eva top [--by cpu|memory] Show top resource-consuming processes
+  omarchy-eva audio [output|input|list] [dev] Switch audio output or mic
+  omarchy-eva wifi [list|connect|disconnect] Manage Wi-Fi connections
+  omarchy-eva bluetooth [list|connect|disc] Manage Bluetooth devices
+  omarchy-eva brightness [level|up|down] Adjust screen brightness
+  omarchy-eva display [list|scale]  Query displays or adjust scaling
+  omarchy-eva system <action>       Hardware telemetry & power (battery, disk, ram, ip, shutdown...)
+  omarchy-eva clipboard [read|clear] Read or clear Wayland clipboard
+  omarchy-eva awareness             Show background sentinel status (CPU, RAM, network, weather)
+  omarchy-eva alert [message...]    Trigger a proactive test alert
 
 Screen Perception & Virtual Input:
-  omarchy-jarvis screenshot [--window] Take sub-35ms screenshot (.cache/jarvis/screen.jpg)
-  omarchy-jarvis move <x> <y>          Move cursor with subtle ease-out delay
-  omarchy-jarvis click <target|x y>    Click visual UI element or (x, y) coordinates
-  omarchy-jarvis type <text...>        Type text with natural human keystroke cadence
+  omarchy-eva screenshot [--window] Take sub-35ms screenshot (.cache/eva/screen.jpg)
+  omarchy-eva move <x> <y>          Move cursor with subtle ease-out delay
+  omarchy-eva click <target|x y>    Click visual UI element or (x, y) coordinates
+  omarchy-eva type <text...>        Type text with natural human keystroke cadence
 
 Machine Learning & Model Tuning:
-  omarchy-jarvis generate              Generate training dataset from schema
-  omarchy-jarvis train                 Fine-tune Laya ModernBERT on GPU/CPU & export to ONNX
-  omarchy-jarvis calibrate             Run Platt temperature scaling & calibration check
-  omarchy-jarvis --help                Show this message
+  omarchy-eva generate              Generate training dataset from schema
+  omarchy-eva train                 Fine-tune Laya ModernBERT on GPU/CPU & export to ONNX
+  omarchy-eva calibrate             Run Platt temperature scaling & calibration check
+  omarchy-eva --help                Show this message
 """)
 
 
@@ -955,6 +995,8 @@ def main():
         cmd_calibrate()
     elif cmd == "status":
         cmd_status()
+    elif cmd in ("config", "cfg", "settings"):
+        cmd_config(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
         print_help()

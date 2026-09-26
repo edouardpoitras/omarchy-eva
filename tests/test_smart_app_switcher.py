@@ -1,4 +1,4 @@
-"""Unit tests for Smart Application Switching with Workspace Navigation in Jarvis."""
+"""Unit tests for Smart Application Switching with Workspace Navigation in Eva."""
 
 import unittest
 from unittest.mock import MagicMock, patch

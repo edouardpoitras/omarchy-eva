@@ -5,15 +5,15 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "eddie.jarvis"
+  moduleName: "eddie.eva"
 
-  readonly property var jarvisService: bar && bar.shell
+  readonly property var evaService: bar && bar.shell
       ? bar.shell.serviceFor(moduleName)
       : null
 
-  readonly property string currentState: jarvisService ? jarvisService.jarvisState : "idle"
-  readonly property string lastCommand: jarvisService ? jarvisService.lastCommand : ""
-  readonly property string lastAction: jarvisService ? jarvisService.lastAction : ""
+  readonly property string currentState: evaService ? evaService.evaState : "idle"
+  readonly property string lastCommand: evaService ? evaService.lastCommand : ""
+  readonly property string lastAction: evaService ? evaService.lastAction : ""
 
   readonly property color barFg: bar ? bar.foreground : Color.foreground
   readonly property string barFont: bar ? bar.fontFamily : "monospace"
@@ -27,109 +27,271 @@ BarWidget {
     return barFg                                          // Default theme color
   }
 
-  // Bar Widget layout container
-  Rectangle {
-    id: chip
-    anchors.verticalCenter: parent.verticalCenter
-    height: bar ? Math.min(bar.height - 6, 26) : 24
-    width: labelText.visible ? contentRow.implicitWidth + 14 : height
-    radius: height / 2
-    color: currentState !== "idle" ? Qt.rgba(stateColor.r, stateColor.g, stateColor.b, 0.18) : "transparent"
-    border.color: currentState !== "idle" ? stateColor : "transparent"
-    border.width: 1
+  readonly property string tooltipMessage: {
+    if (lastCommand) {
+      return "Eva Voice AI (" + currentState + ")\nLast: \"" + lastCommand + "\"\n(Left: Speak, Right: Menu)"
+    }
+    return "Eva Voice AI (" + currentState + ")\nLeft: Speak (SUPER+SHIFT+E / J)\nRight: Menu"
+  }
 
-    Behavior on color { ColorAnimation { duration: 180 } }
-    Behavior on border.color { ColorAnimation { duration: 180 } }
+  visible: true
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
 
-    Row {
-      id: contentRow
-      anchors.centerIn: parent
-      spacing: 6
+  // Standard Omarchy Bar Button Integration
+  BarIconButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    slotSize: Style.bar.statusSlot
+    active: root.currentState !== "idle"
+    activeColor: root.stateColor
+    useActiveColor: true
+    tooltipText: root.tooltipMessage
 
-      // Animated Arc-Reactor / Voice glyph
+    // Holographic Arc-Reactor Glyph & State Animation
+    iconComponent: Component {
       Item {
-        id: iconContainer
-        width: 16
-        height: 16
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.fill: parent
 
-        // Outer pulse ring when active
+        // Outer pulsing ring when listening / transcribing / executing
         Rectangle {
           id: pulseRing
           anchors.centerIn: parent
-          width: 16
-          height: 16
-          radius: 8
+          width: parent.width * 0.85
+          height: width
+          radius: width / 2
           color: "transparent"
           border.color: root.stateColor
-          border.width: 1.5
-          opacity: currentState === "listening" ? 1.0 : 0.6
+          border.width: root.currentState !== "idle" ? 1.5 : 1
+          opacity: root.currentState === "listening" ? 1.0 : (root.currentState === "idle" ? 0.65 : 0.85)
 
           SequentialAnimation on scale {
-            running: currentState === "listening" || currentState === "transcribing"
+            running: root.currentState === "listening" || root.currentState === "transcribing"
             loops: Animation.Infinite
-            NumberAnimation { from: 0.9; to: 1.25; duration: 600; easing.type: Easing.InOutQuad }
-            NumberAnimation { from: 1.25; to: 0.9; duration: 600; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 0.85; to: 1.25; duration: 600; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 1.25; to: 0.85; duration: 600; easing.type: Easing.InOutQuad }
           }
         }
 
-        // Inner glowing core
+        // Inner glowing core orb
         Rectangle {
+          id: coreOrb
           anchors.centerIn: parent
-          width: 6
-          height: 6
-          radius: 3
+          width: root.currentState !== "idle" ? parent.width * 0.35 : parent.width * 0.28
+          height: width
+          radius: width / 2
           color: root.stateColor
-        }
-      }
 
-      // State label when active or executing
-      Text {
-        id: labelText
-        anchors.verticalCenter: parent.verticalCenter
-        visible: currentState !== "idle"
-        font.family: root.barFont
-        font.pixelSize: 11
-        font.bold: true
-        color: root.stateColor
-        text: {
-          if (currentState === "listening") return "Listening..."
-          if (currentState === "transcribing") return "Processing..."
-          if (currentState === "executing") return lastAction ? lastAction : "Executed"
-          return ""
+          SequentialAnimation on opacity {
+            running: root.currentState !== "idle"
+            loops: Animation.Infinite
+            NumberAnimation { from: 0.6; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 1.0; to: 0.6; duration: 400; easing.type: Easing.InOutQuad }
+          }
         }
       }
     }
 
-    MouseArea {
+    onPressed: function(b) {
+      if (b === Qt.RightButton) {
+        quickPopup.open = !quickPopup.open
+      } else {
+        if (root.evaService) root.evaService.trigger()
+      }
+    }
+  }
+
+  // Quick Actions Popup Menu (Right-Click)
+  PopupCard {
+    id: quickPopup
+    anchorItem: button
+    bar: root.bar
+    contentWidth: 220
+    contentHeight: actionColumn.implicitHeight + 24
+    open: false
+
+    Rectangle {
       anchors.fill: parent
-      cursorShape: Qt.PointingHandCursor
-      hoverEnabled: true
+      color: Qt.rgba(0.08, 0.10, 0.14, 0.96)
+      radius: 12
+      border.color: Qt.rgba(root.stateColor.r, root.stateColor.g, root.stateColor.b, 0.3)
+      border.width: 1
 
-      onClicked: function(mouse) {
-        if (mouse.button === Qt.LeftButton) {
-          if (jarvisService) jarvisService.trigger()
+      Column {
+        id: actionColumn
+        anchors.top: parent.top
+        anchors.topMargin: 12
+        anchors.left: parent.left
+        anchors.leftMargin: 12
+        anchors.right: parent.right
+        anchors.rightMargin: 12
+        spacing: 6
+
+        // Title and Status
+        Row {
+          spacing: 8
+          width: parent.width
+
+          Rectangle {
+            width: 8
+            height: 8
+            radius: 4
+            color: root.stateColor
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            text: "Eva Assistant (" + root.currentState + ")"
+            font.family: root.barFont
+            font.pixelSize: 12
+            font.bold: true
+            color: "#ffffff"
+          }
+        }
+
+        Rectangle {
+          width: parent.width
+          height: 1
+          color: Qt.rgba(1, 1, 1, 0.1)
+        }
+
+        // Action: Trigger
+        Rectangle {
+          width: parent.width
+          height: 28
+          radius: 6
+          color: action1Mouse.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            spacing: 8
+
+            Text { text: "🎤"; font.pixelSize: 12 }
+            Text {
+              text: "Listen / Speak"
+              font.family: root.barFont
+              font.pixelSize: 11
+              color: "#e0e0e0"
+            }
+          }
+
+          MouseArea {
+            id: action1Mouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              quickPopup.open = false
+              if (root.evaService) root.evaService.trigger()
+            }
+          }
+        }
+
+        // Action: Identity
+        Rectangle {
+          width: parent.width
+          height: 28
+          radius: 6
+          color: action2Mouse.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            spacing: 8
+
+            Text { text: "ℹ️"; font.pixelSize: 12 }
+            Text {
+              text: "Who are you?"
+              font.family: root.barFont
+              font.pixelSize: 11
+              color: "#e0e0e0"
+            }
+          }
+
+          MouseArea {
+            id: action2Mouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              quickPopup.open = false
+              if (root.evaService) root.evaService.executeQuery("who are you")
+            }
+          }
+        }
+
+        // Action: Capabilities
+        Rectangle {
+          width: parent.width
+          height: 28
+          radius: 6
+          color: action3Mouse.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            spacing: 8
+
+            Text { text: "⚡"; font.pixelSize: 12 }
+            Text {
+              text: "What can you do?"
+              font.family: root.barFont
+              font.pixelSize: 11
+              color: "#e0e0e0"
+            }
+          }
+
+          MouseArea {
+            id: action3Mouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              quickPopup.open = false
+              if (root.evaService) root.evaService.executeQuery("what can you do")
+            }
+          }
+        }
+
+        // Action: Restart Daemon
+        Rectangle {
+          width: parent.width
+          height: 28
+          radius: 6
+          color: action4Mouse.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+
+          Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            spacing: 8
+
+            Text { text: "🔄"; font.pixelSize: 12 }
+            Text {
+              text: "Restart Daemon"
+              font.family: root.barFont
+              font.pixelSize: 11
+              color: "#e0e0e0"
+            }
+          }
+
+          MouseArea {
+            id: action4Mouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              quickPopup.open = false
+              if (root.evaService) root.evaService.restartDaemon()
+            }
+          }
         }
       }
     }
-  }
-
-  // Tooltip
-  PanelToolTip {
-    id: tip
-    visible: chipMouse.containsMouse
-    text: {
-      if (lastCommand) {
-        return "Jarvis Voice AI\nLast: \"" + lastCommand + "\"\nAction: " + lastAction + "\n(SUPER + SHIFT + CTRL + X)"
-      }
-      return "Jarvis Voice AI (SUPER + SHIFT + CTRL + X)\nClick to speak"
-    }
-  }
-
-  MouseArea {
-    id: chipMouse
-    anchors.fill: chip
-    hoverEnabled: true
-    acceptedButtons: Qt.NoButton
   }
 }

@@ -1,4 +1,4 @@
-"""System 2 Deliberative Reasoning Tier & Agent Bridge for Omarchy Jarvis.
+"""System 2 Deliberative Reasoning Tier & Agent Bridge for Eva desktop automation suite.
 
 Bridges ambiguous, generative, or multi-step voice commands to Omarchy's
 pre-configured agent CLIs (Gemini, Claude, Codex) with real-time Hyprland
@@ -59,7 +59,7 @@ class System2Agent:
 
     def _detect_default_agent(self) -> str:
         """Detect configured default agent from Omarchy environment."""
-        env_agent = os.environ.get("JARVIS_AGENT")
+        env_agent = os.environ.get("EVA_AGENT")
         if env_agent:
             return env_agent
 
@@ -159,7 +159,7 @@ class System2Agent:
         wins_desc = ", ".join([f"{w['class']} ('{w['title'][:30]}')" for w in open_wins[:6]]) or "None"
         cap_context = capabilities_registry.format_system_prompt_context()
 
-        prompt = f"""You are Jarvis, the voice-enabled AI assistant embedded directly into Omarchy Linux running the Hyprland Wayland compositor.
+        prompt = f"""You are Eva, the voice-enabled AI assistant embedded directly into Omarchy Linux running the Hyprland Wayland compositor.
 The user is speaking to you via real-time voice control.
 
 Current Desktop State:
@@ -207,11 +207,11 @@ Guidelines for Spoken Output:
         if self.history:
             history_text = "Recent conversation:\n"
             for turn in self.history[-4:]:
-                role = "User" if turn["role"] == "user" else "Jarvis"
+                role = "User" if turn["role"] == "user" else "Eva"
                 history_text += f"{role}: {turn['content']}\n"
             history_text += "\n"
 
-        full_prompt = f"{system_prompt}\n{history_text}User: {user_text}\nJarvis:"
+        full_prompt = f"{system_prompt}\n{history_text}User: {user_text}\nEva:"
 
         # Invoke agent CLI backend
         raw_output = ""
@@ -233,13 +233,13 @@ Guidelines for Spoken Output:
             )
             raw_output = proc.stdout if proc.returncode == 0 else (proc.stdout or proc.stderr)
         except subprocess.TimeoutExpired:
-            raw_output = "I apologize, sir. The agent query timed out."
+            raw_output = "I apologize. The agent query timed out."
         except Exception as e:
             raw_output = f"I encountered an error querying the agent: {e}"
 
         response = strip_ansi_and_banners(raw_output)
         if not response:
-            response = "I processed your request, sir, but received an empty response from the agent."
+            response = "I processed your request, but received an empty response from the agent."
 
         # Detect if clarification / question is needed
         requires_clarification = (
@@ -292,7 +292,7 @@ Guidelines for Spoken Output:
             f"Attached Screen Capture: @{img_path}\n\n"
             f"User request: {user_text}\n"
             "Inspect the attached image carefully and provide a concise, direct spoken response (1-3 sentences).\n"
-            "Jarvis:"
+            "Eva:"
         )
 
         raw_output = ""
@@ -314,13 +314,13 @@ Guidelines for Spoken Output:
             )
             raw_output = proc.stdout if proc.returncode == 0 else (proc.stdout or proc.stderr)
         except subprocess.TimeoutExpired:
-            raw_output = "I apologize, sir. The vision analysis query timed out."
+            raw_output = "I apologize. The vision analysis query timed out."
         except Exception as e:
             raw_output = f"I encountered an error analyzing the screen image: {e}"
 
         response = strip_ansi_and_banners(raw_output)
         if not response:
-            response = "I looked at your screen, sir, but could not discern any specific details."
+            response = "I looked at your screen, but could not discern any specific details."
 
         latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
 

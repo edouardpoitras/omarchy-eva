@@ -31,9 +31,12 @@ VISUAL_SILENT_INTENTS = {
     "HYPR_WINDOW",
     "HYPR_FOCUS",
     "APP_LAUNCH",
+    "APP_CLOSE",
     "VISUAL_CLICK",
     "AUDIO_VOLUME",             # volume up/down/mute (user sees OSD / hears volume change)
+    "AUDIO_CONTROL",
     "DEVICE_BRIGHTNESS",        # brightness changes
+    "DEVICE_CONTROL",
     "DEVICE_DND",
     "DEVICE_BAR",
 }
@@ -42,6 +45,7 @@ VISUAL_SILENT_ACTIONS = {
     "workspace",
     "movetoworkspace",
     "close_window",
+    "close",
     "toggle_fullscreen",
     "toggle_floating",
     "toggle_split",
@@ -169,6 +173,10 @@ class EvaConfig:
             return True
 
         # Minimal mode (default):
+        # Auto-detect query from action or intent if not explicitly flagged
+        if action and any(q_word in action.lower() for q_word in ("list", "status", "query", "get", "where", "what", "which", "identify", "overview")):
+            is_query = True
+
         # Always speak on errors or questions/queries
         if is_error or is_query:
             return True
@@ -186,9 +194,7 @@ class EvaConfig:
 
         # Informational intents always speak
         if intent in (
-            "JARVIS_IDENTITY",
             "EVA_IDENTITY",
-            "JARVIS_CAPABILITIES",
             "EVA_CAPABILITIES",
             "MEDIA_QUERY",
             "SYSTEM_TELEMETRY",

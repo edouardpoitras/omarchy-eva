@@ -24,8 +24,8 @@ OUTPUT_DIR = os.path.join(REPO_ROOT, "training")
 PREFIXES = [
     "",
     "please ",
-    "hey jarvis ",
-    "jarvis ",
+    "hey eva ",
+    "eva ",
     "could you ",
     "can you ",
     "quick ",
@@ -88,7 +88,7 @@ Seed examples:
 {json.dumps(seed_samples[:5])}
 
 Requirements:
-- Simulate spoken English utterances (include occasional filler words like 'um', 'please', 'hey jarvis', casual phrasing).
+- Simulate spoken English utterances (include occasional filler words like 'um', 'please', 'hey eva', casual phrasing).
 - Return ONLY a raw JSON array of strings, nothing else. No markdown, no commentary.
 Format: ["utterance 1", "utterance 2", ...]"""
 
@@ -169,7 +169,7 @@ def build_dataset(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Omarchy Jarvis Dataset Generator")
+    parser = argparse.ArgumentParser(description="Omarchy Eva Dataset Generator")
     parser.add_argument("--count", type=int, default=120, help="Target samples per intent")
     parser.add_argument("--use-agent", action="store_true", help="Use Omarchy Agent CLI for AI synthesis")
     parser.add_argument("--val-split", type=float, default=0.2, help="Validation split fraction")

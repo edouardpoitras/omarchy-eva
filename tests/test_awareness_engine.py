@@ -1,4 +1,4 @@
-"""Unit tests for the Proactive Jarvis Awareness Engine."""
+"""Unit tests for the Proactive Eva Awareness Engine."""
 
 import unittest
 from unittest.mock import patch, MagicMock

@@ -1,4 +1,4 @@
-# Omarchy Jarvis Command Grammar Schema
+# Omarchy Eva Command Grammar Schema
 # Defines categories, actions, dynamic slot entities, and seed templates
 # Used by dataset_generator.py to synthesize fine-tuning data for Laya.
 
@@ -49,6 +49,9 @@ intents:
     templates:
       - "close window"
       - "close this window"
+      - "close it"
+      - "now close it"
+      - "close that"
       - "kill active window"
       - "quit this window"
       - "make this fullscreen"
@@ -85,6 +88,10 @@ intents:
       - "open {app} on workspace {target}"
       - "launch {app} on workspace {target}"
       - "move {app} to workspace {target}"
+      - "focus it"
+      - "switch to it"
+      - "show it"
+      - "where is it"
 
   MEDIA_CONTROL:
     description: "Control MPRIS and browser media playback (YouTube, Spotify, etc.)"
@@ -289,18 +296,18 @@ intents:
       - "can you write a python script for this"
       - "tell me why my sound is not working"
 
-  JARVIS_IDENTITY:
-    description: "Identify Jarvis system identity, architecture, and persona"
+  EVA_IDENTITY: &EVA_IDENTITY
+    description: "Identify Eva system identity, architecture, and persona"
     templates:
       - "who are you"
       - "what are you"
       - "identify yourself"
       - "tell me about yourself"
-      - "what is jarvis"
+      - "what is eva"
       - "who made you"
       - "introduce yourself"
 
-  JARVIS_CAPABILITIES:
+  EVA_CAPABILITIES:
     description: "Query overall capabilities, feature overview, or domain-specific breakdowns"
     slots:
       domain: ["windows", "workspaces", "apps", "audio", "sound", "hardware", "wifi", "bluetooth", "brightness", "system", "telemetry", "vision", "screen", "awareness", "sentinel", "chaining", "reasoning"]

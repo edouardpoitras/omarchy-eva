@@ -1,4 +1,4 @@
-"""Two-Tier Visual Grounding and Auto-Click Engine for Omarchy Jarvis.
+"""Two-Tier Visual Grounding and Auto-Click Engine for Omarchy Eva.
 
 Locates desktop UI elements via:
 1. High-speed Tesseract TSV OCR bounding boxes (~300ms, zero tokens) for textual targets.

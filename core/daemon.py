@@ -1,4 +1,4 @@
-"""Jarvis Core Background IPC Daemon for Omarchy Linux."""
+"""Eva Core Background IPC Daemon for Omarchy Linux."""
 
 import json
 import os
@@ -11,6 +11,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from core.awareness_engine import AwarenessEngine
+from core.config import eva_config
 from core.dispatcher import CommandDispatcher
 from core.system2_agent import System2Agent
 from core.input_controller import InputController
@@ -20,18 +21,18 @@ from core.vision_capture import VisionCapture
 from core.voxtype_bridge import VoxtypeBridge
 
 
-class JarvisDaemon:
+class EvaDaemon:
     """Central background server for voice automation, IPC coordination, and execution."""
 
     def __init__(self, socket_path: Optional[str] = None):
         self.runtime_dir = os.environ.get(
             "XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"
         )
-        self.jarvis_dir = os.path.join(self.runtime_dir, "jarvis")
-        os.makedirs(self.jarvis_dir, exist_ok=True)
+        self.eva_dir = os.path.join(self.runtime_dir, "eva")
+        os.makedirs(self.eva_dir, exist_ok=True)
 
         self.socket_path = socket_path or os.path.join(
-            self.jarvis_dir, "ipc.sock"
+            self.eva_dir, "ipc.sock"
         )
         self.sound = Soundscape()
         self.tts = KokoroTTS(lazy_init=True)
@@ -89,11 +90,11 @@ class JarvisDaemon:
             }
 
             try:
-                state_path = os.path.join(self.jarvis_dir, "state.json")
-                tmp_path = f"{state_path}.tmp"
+                state_path_eva = os.path.join(self.eva_dir, "state.json")
+                tmp_path = f"{state_path_eva}.tmp"
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump(state_data, f)
-                os.replace(tmp_path, state_path)
+                os.replace(tmp_path, state_path_eva)
             except Exception:
                 pass
 
@@ -129,7 +130,7 @@ class JarvisDaemon:
         urgency = "critical" if alert_type == "critical" else "normal"
         try:
             subprocess.Popen(
-                ["notify-send", "-u", urgency, "-a", "Jarvis", title, message],
+                ["notify-send", "-u", urgency, "-a", "Eva", title, message],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -228,12 +229,24 @@ class JarvisDaemon:
         elif action == "set_voice":
             voice = req.get("voice", "").strip()
             if voice in AVAILABLE_VOICES:
-                self.tts.default_voice = voice
+                self.tts._default_voice = voice
+                eva_config.set("voice", voice)
                 return {"status": "ok", "default_voice": voice}
             return {
                 "status": "error",
                 "error": f"Unknown voice: {voice}. Choose from: {list(AVAILABLE_VOICES.keys())}",
             }
+
+        elif action == "get_config":
+            return {"status": "ok", "config": eva_config.as_dict()}
+
+        elif action == "set_config":
+            key = req.get("key")
+            value = req.get("value")
+            if not key:
+                return {"status": "error", "error": "Missing config key"}
+            eva_config.set(key, value)
+            return {"status": "ok", "key": key, "value": value, "config": eva_config.as_dict()}
 
         elif action == "capture_screen":
             mode = req.get("mode", "fullscreen")
@@ -363,7 +376,7 @@ class JarvisDaemon:
             return {"status": "ok", "message": "HUD demo running"}
 
         elif action == "proactive_alert":
-            title = req.get("title", "Jarvis Alert")
+            title = req.get("title", "Eva Alert")
             message = req.get("message", "")
             speech = req.get("speech")
             alert_type = req.get("type", "warning")
@@ -526,6 +539,7 @@ class JarvisDaemon:
         os.chmod(self.socket_path, 0o700)
         self._server_sock.listen(10)
         self.running = True
+
         self.set_state("idle")
         self.awareness.start()
 
@@ -570,7 +584,7 @@ class JarvisDaemon:
 
 
 def main():
-    daemon = JarvisDaemon()
+    daemon = EvaDaemon()
     try:
         daemon.start()
     except KeyboardInterrupt:
