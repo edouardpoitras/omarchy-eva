@@ -167,6 +167,8 @@ class EvaDaemon:
             pass
 
         # 2. Spoken Butler Voice via Kokoro TTS
+        from core.context_memory import context_memory
+        context_memory.record_statement(spoken_text)
         if self.tts:
             self.tts.speak(spoken_text, block=False)
 
@@ -220,6 +222,16 @@ class EvaDaemon:
             self._schedule_idle_reset(1.8)
 
             return {"status": "ok", "result": res}
+
+        elif action == "repeat":
+            from core.context_memory import context_memory
+            stmt = context_memory.get_last_statement()
+            speech = stmt if stmt else "I haven't said anything yet."
+            if self.tts:
+                self.tts.speak(speech, block=False)
+            self.set_state("executing", command="repeat that", action="repeat_statement", intent="REPEAT_STATEMENT", response=speech)
+            self._schedule_idle_reset(1.8)
+            return {"status": "ok", "statement": speech, "speech": speech}
 
         elif action == "classify":
             text = req.get("text", "").strip()
@@ -550,10 +562,19 @@ class EvaDaemon:
     def start(self):
         """Bind Unix socket and run IPC event loop."""
         if os.path.exists(self.socket_path):
+            # Check if another daemon is already serving this socket
             try:
-                os.remove(self.socket_path)
-            except OSError:
-                pass
+                test_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                test_sock.settimeout(0.5)
+                test_sock.connect(self.socket_path)
+                test_sock.close()
+                print("Eva daemon is already running on socket. Exiting duplicate process.")
+                return
+            except (ConnectionRefusedError, OSError):
+                try:
+                    os.remove(self.socket_path)
+                except OSError:
+                    pass
 
         self._server_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._server_sock.bind(self.socket_path)

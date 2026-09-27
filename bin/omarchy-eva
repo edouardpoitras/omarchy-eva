@@ -907,6 +907,28 @@ def cmd_steam(args: list[str]):
             sys.exit(1)
 
 
+def cmd_repeat():
+    """Repeat the last statement or output spoken by Eva."""
+    if is_daemon_alive():
+        resp = send_ipc("repeat")
+        if resp and resp.get("status") == "ok":
+            stmt = resp.get("statement") or resp.get("speech") or "I haven't said anything yet."
+            print(f"🗣️  Repeated: \"{stmt}\"")
+            return
+        resp = send_ipc("execute_text", {"text": "repeat that"})
+        if resp and resp.get("status") == "ok":
+            res = resp.get("result", {})
+            stmt = res.get("speech") or res.get("response") or "I haven't said anything yet."
+            print(f"🗣️  Repeated: \"{stmt}\"")
+            return
+
+    from core.dispatcher import CommandDispatcher
+    d = CommandDispatcher()
+    res = d.dispatch_text("repeat that")
+    stmt = res.get("speech") or res.get("response") or "I haven't said anything yet."
+    print(f"🗣️  Repeated: \"{stmt}\"")
+
+
 def print_help():
     print("""Omarchy Eva Voice Automation CLI
 
@@ -915,6 +937,7 @@ Usage:
   omarchy-eva record-start          Start voice capture (push-to-talk press)
   omarchy-eva record-stop           Stop voice capture & execute (push-to-talk release)
   omarchy-eva exec <command...>     Directly execute command text
+  omarchy-eva repeat                Repeat the last statement or output spoken by Eva
   omarchy-eva ask <prompt...>       Deliberative System 2 reasoning with spoken reply
   omarchy-eva see [prompt...]       Inspect screen with vision agent and speak response
   omarchy-eva speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
@@ -973,6 +996,8 @@ def main():
         cmd_record_stop()
     elif cmd in ("exec", "run"):
         cmd_exec(sys.argv[2:])
+    elif cmd in ("repeat", "again", "say-again"):
+        cmd_repeat()
     elif cmd in ("ask", "agent", "query"):
         cmd_ask(sys.argv[2:])
     elif cmd in ("see", "vision", "look"):

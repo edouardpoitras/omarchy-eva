@@ -160,6 +160,20 @@ DOMAIN_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "aliases": ["reasoning", "agent", "agents", "deliberative", "system 2", "system2", "llm", "intelligence", "gemini", "claude", "codex"],
         "schema_intents": ["ESCALATE_GENERATIVE"],
     },
+    "context": {
+        "title": "Conversational Memory & Repetition",
+        "description": "Multi-turn context tracking, natural pronoun resolution, and repeating previous statements or outputs.",
+        "spoken": "For conversational context, I track recent applications and workspaces, resolve pronouns like it and that, and can repeat what I said or output whenever you miss-hear me.",
+        "examples": [
+            "repeat that",
+            "what did you say",
+            "say again",
+            "what was that",
+            "now close it",
+        ],
+        "aliases": ["context", "memory", "repeat", "pronoun", "history", "say again", "anaphora"],
+        "schema_intents": ["REPEAT_STATEMENT"],
+    },
 }
 
 

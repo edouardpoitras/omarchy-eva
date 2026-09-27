@@ -323,3 +323,27 @@ intents:
       - "tell me about {domain}"
       - "{domain} capabilities"
       - "how does {domain} work"
+
+  REPEAT_STATEMENT:
+    description: "Repeat the last statement or output spoken by Eva"
+    templates:
+      - "repeat that"
+      - "repeat"
+      - "repeat please"
+      - "say that again"
+      - "say again"
+      - "can you repeat that"
+      - "could you say that again"
+      - "what did you say"
+      - "what did you just say"
+      - "what was that"
+      - "what was that again"
+      - "pardon"
+      - "pardon me"
+      - "come again"
+      - "repeat the last statement"
+      - "repeat the last output"
+      - "repeat what you said"
+      - "repeat yourself"
+      - "what was the last thing you said"
+

@@ -3,6 +3,7 @@
 import os
 import re
 import shlex
+import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -167,6 +168,7 @@ class AppIndexer:
 
         # Clean Exec line: remove XDG parameter codes %u, %U, %f, %F, %i, %c, %k
         clean_exec = re.sub(r"%[a-zA-Z]", "", exec_str).strip()
+        clean_exec = re.sub(r"\s+--\s*$", "", clean_exec).strip()
 
         raw_keywords = data.get("Keywords", "")
         keywords = [k.strip() for k in raw_keywords.split(";") if k.strip()]
@@ -264,27 +266,22 @@ class AppIndexer:
         else:
             cmd = shlex.split(cmd_str)
 
+        if shutil.which("uwsm-app"):
+            launch_cmd = ["uwsm-app", "--"] + cmd
+        else:
+            launch_cmd = cmd
+
         try:
-            # First try dispatching via Hyprland IPC if available
-            hypr_signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-            if hypr_signature:
-                subprocess.Popen(
-                    ["hyprctl", "dispatch", "exec", cmd_str],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-            else:
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
+            subprocess.Popen(
+                launch_cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
             return {
                 "success": True,
                 "app": app["name"],
-                "exec": cmd_str,
+                "exec": " ".join(launch_cmd),
                 "id": app["id"],
             }
         except Exception as e:

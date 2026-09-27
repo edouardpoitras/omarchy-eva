@@ -3,6 +3,7 @@
 import os
 import re
 import shlex
+import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -133,7 +134,12 @@ class SteamIndexer:
             return None
 
         q_lower = q.lower()
+        if q_lower in ("steam", "steam client", "the steam client", "game", "the game"):
+            return None
+
         q_norm = self._normalize(q)
+        if q_norm in ("steam", "steamclient", "game"):
+            return None
 
         # 1. Direct App ID match
         if q in self._games:
@@ -157,17 +163,17 @@ class SteamIndexer:
                     if self._normalize(g["name"]) == q_norm or self._normalize(g.get("installdir", "")) == q_norm:
                         return g
 
-            # Substring normalized match
+            # Substring normalized match (only across actual games)
             for g in self._games.values():
                 if g.get("is_game", True):
                     g_norm = self._normalize(g["name"])
                     if q_norm in g_norm or g_norm in q_norm:
                         return g
 
-            # Include tools if no game matched
+            # Include tools only on exact normalized match, not broad substring
             for g in self._games.values():
                 if not g.get("is_game", True):
-                    if self._normalize(g["name"]) == q_norm or q_norm in self._normalize(g["name"]):
+                    if self._normalize(g["name"]) == q_norm or self._normalize(g.get("installdir", "")) == q_norm:
                         return g
 
         return None
@@ -182,35 +188,30 @@ class SteamIndexer:
             }
 
         appid = game["appid"]
+        cmd = ["steam", f"steam://rungameid/{appid}"]
+
         cmd_str = f"steam steam://rungameid/{appid}"
+        if shutil.which("uwsm-app"):
+            launch_cmd = ["uwsm-app", "--"] + cmd
+        else:
+            launch_cmd = cmd
 
         try:
-            hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-            if hypr_sig:
-                subprocess.Popen(
-                    ["hyprctl", "dispatch", "exec", cmd_str],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-            else:
-                subprocess.Popen(
-                    shlex.split(cmd_str),
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-
+            subprocess.Popen(
+                launch_cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
             return {
                 "success": True,
-                "appid": appid,
                 "name": game["name"],
+                "appid": appid,
                 "exec": cmd_str,
+                "command": " ".join(launch_cmd),
             }
         except Exception as e:
             return {
                 "success": False,
-                "appid": appid,
-                "name": game["name"],
                 "error": str(e),
             }

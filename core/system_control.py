@@ -51,7 +51,7 @@ class SystemControl:
                     ):
                         # Dispatch closewindow to specific address
                         subprocess.run(
-                            ["hyprctl", "dispatch", "closewindow", f"address:{addr}"],
+                            ["hyprctl", "dispatch", f'hl.dsp.window.close({{ window = "address:{addr}" }})'],
                             capture_output=True,
                             timeout=1.0,
                             check=False,
@@ -304,12 +304,12 @@ class SystemControl:
     # --------------------------------------------------------- Window Management
     def center_active_window(self) -> bool:
         """Center the active window on screen."""
-        res = subprocess.run(["hyprctl", "dispatch", "centerwindow"], capture_output=True, check=False)
+        res = subprocess.run(["hyprctl", "dispatch", "hl.dsp.window.center()"], capture_output=True, check=False)
         return res.returncode == 0
 
     def pin_active_window(self) -> bool:
         """Pin active window so it stays visible across all workspaces."""
-        res = subprocess.run(["hyprctl", "dispatch", "pin"], capture_output=True, check=False)
+        res = subprocess.run(["hyprctl", "dispatch", "hl.dsp.window.pin()"], capture_output=True, check=False)
         return res.returncode == 0
 
     def move_window_to_monitor(self, direction: str = "+1") -> bool:

@@ -166,6 +166,9 @@ class EvaConfig:
         """
         verb = self.verbosity
 
+        if intent == "REPEAT_STATEMENT":
+            return True
+
         if verb == "silent":
             return is_error
 
@@ -196,6 +199,7 @@ class EvaConfig:
         if intent in (
             "EVA_IDENTITY",
             "EVA_CAPABILITIES",
+            "REPEAT_STATEMENT",
             "MEDIA_QUERY",
             "SYSTEM_TELEMETRY",
             "ESCALATE_GENERATIVE",

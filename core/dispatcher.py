@@ -173,6 +173,8 @@ class CommandDispatcher:
         """Conditionally speak text using Kokoro TTS based on EvaConfig verbosity settings."""
         if not text or not self.system2 or not self.system2.tts:
             return
+        if intent != "REPEAT_STATEMENT":
+            context_memory.record_statement(text)
         if eva_config.should_speak_action(
             intent=intent, action=action, is_query=is_query, is_error=is_error
         ):
@@ -274,6 +276,13 @@ class CommandDispatcher:
         res["input"] = raw_text
         if resolved_text != raw_text:
             res["resolved"] = resolved_text
+
+        # Record substantive spoken output or response in context memory for repetition
+        if execute and res.get("intent") != "REPEAT_STATEMENT":
+            stmt = res.get("speech") or res.get("response")
+            if stmt:
+                context_memory.record_statement(stmt)
+
         return res
 
     dispatch = dispatch_text
@@ -393,6 +402,44 @@ class CommandDispatcher:
                 capabilities=overview,
             )
             self._speak(speech, intent="EVA_CAPABILITIES", action="capabilities_overview", is_query=True)
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # ------------------------------------------------------------- 0d. Repeat Last Statement or Output
+        repeat_patterns = [
+            r"^(?:please\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)?"
+            r"(?:"
+            r"repeat(?:\s+(?:that|it|this|again|output|statement|the\s+output|the\s+last\s+(?:statement|output|thing(?:\s+you\s+said)?|response)|what\s+you\s+said|yourself))?"
+            r"|say\s+(?:that|it|this)?\s*again"
+            r"|say\s+again"
+            r"|what\s+did\s+you\s+(?:just\s+)?(?:say|tell\s+me)"
+            r"|what\s+was\s+that(?:\s+again)?"
+            r"|what\s+was\s+the\s+last\s+thing\s+you\s+said"
+            r"|pardon(?:\s+me)?"
+            r"|come\s+again"
+            r")(?:\s+please|\s+again)?\s*$",
+        ]
+        if any(re.search(p, text) for p in repeat_patterns):
+            if not execute:
+                result.update(
+                    matched=True,
+                    intent="REPEAT_STATEMENT",
+                    action="repeat_statement",
+                    success=True,
+                )
+                return result
+
+            last_stmt = context_memory.get_last_statement()
+            speech = last_stmt if last_stmt else "I haven't said anything yet."
+            self._speak(speech, intent="REPEAT_STATEMENT", action="repeat_statement", is_query=True)
+            result.update(
+                matched=True,
+                intent="REPEAT_STATEMENT",
+                action="repeat_statement",
+                success=True,
+                speech=speech,
+                response=speech,
+            )
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result
 
@@ -942,32 +989,33 @@ class CommandDispatcher:
         )
         if m_game:
             candidate_game = m_game.group(1).strip()
-            steam_match = self.steam.find_game(candidate_game)
-            if steam_match:
-                game_name = steam_match["name"]
-                appid = steam_match["appid"]
-                if not execute:
+            if candidate_game.lower() not in ("steam", "steam client", "the steam client", "game", "the game"):
+                steam_match = self.steam.find_game(candidate_game)
+                if steam_match:
+                    game_name = steam_match["name"]
+                    appid = steam_match["appid"]
+                    if not execute:
+                        result.update(
+                            matched=True,
+                            intent="STEAM_LAUNCH",
+                            action=f"steam_launch {game_name}",
+                            success=True,
+                        )
+                        return result
+
+                    launch_res = self.steam.launch_game(appid)
+                    speech = f"Launching {game_name} on Steam."
+                    context_memory.record(intent="STEAM_LAUNCH", action=f"steam_launch {game_name}", app=game_name)
                     result.update(
                         matched=True,
                         intent="STEAM_LAUNCH",
                         action=f"steam_launch {game_name}",
-                        success=True,
+                        success=launch_res.get("success", False),
+                        speech=speech,
                     )
+                    self._speak(speech, intent="STEAM_LAUNCH", action=f"steam_launch {game_name}")
+                    result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                     return result
-
-                launch_res = self.steam.launch_game(appid)
-                speech = f"Launching {game_name} on Steam."
-                context_memory.record(intent="STEAM_LAUNCH", action=f"steam_launch {game_name}", app=game_name)
-                result.update(
-                    matched=True,
-                    intent="STEAM_LAUNCH",
-                    action=f"steam_launch {game_name}",
-                    success=launch_res.get("success", False),
-                    speech=speech,
-                )
-                self._speak(speech, intent="STEAM_LAUNCH", action=f"steam_launch {game_name}")
-                result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
-                return result
 
         # Smart App Focus or Launch: "open obsidian", "show me spotify", "see spotify"
         m_app = re.search(

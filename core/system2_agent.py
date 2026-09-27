@@ -257,6 +257,9 @@ Guidelines for Spoken Output:
         if len(self.history) > self.max_history:
             self.history = self.history[-self.max_history:]
 
+        from core.context_memory import context_memory
+        context_memory.record_statement(response)
+
         # Spoken synthesis via Kokoro TTS
         speech_result = None
         if speak and self.tts:
@@ -329,6 +332,9 @@ Guidelines for Spoken Output:
         self.history.append({"role": "assistant", "content": response})
         if len(self.history) > self.max_history:
             self.history = self.history[-self.max_history:]
+
+        from core.context_memory import context_memory
+        context_memory.record_statement(response)
 
         # Spoken synthesis via Kokoro TTS
         speech_result = None

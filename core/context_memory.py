@@ -26,7 +26,20 @@ class ContextMemory:
         self.last_window_address: Optional[str] = None
         self.last_intent: Optional[str] = None
         self.last_action: Optional[str] = None
+        self.last_statement: Optional[str] = None
+        self.last_statement_timestamp: float = 0.0
         self.last_timestamp: float = 0.0
+
+    def record_statement(self, statement: str):
+        """Record the last spoken statement or substantive output."""
+        clean = (statement or "").strip()
+        if clean and not clean.startswith("I haven't said anything"):
+            self.last_statement = clean
+            self.last_statement_timestamp = time.time()
+
+    def get_last_statement(self) -> Optional[str]:
+        """Return the most recent spoken statement or substantive output."""
+        return self.last_statement
 
     def record(
         self,
@@ -37,6 +50,7 @@ class ContextMemory:
         window_class: Optional[str] = None,
         window_title: Optional[str] = None,
         window_address: Optional[str] = None,
+        statement: Optional[str] = None,
     ):
         """Record an executed action and its entity targets into short-term memory."""
         self.last_timestamp = time.time()
@@ -56,6 +70,8 @@ class ContextMemory:
             self.last_window_title = window_title
         if window_address is not None:
             self.last_window_address = window_address
+        if statement is not None and intent != "REPEAT_STATEMENT":
+            self.record_statement(statement)
 
     def is_valid(self) -> bool:
         """Check if memory has not expired."""
@@ -84,6 +100,10 @@ class ContextMemory:
         """
         raw_text = text.strip()
         if not raw_text:
+            return text
+
+        # Guard: Do not resolve pronouns on repeat commands (e.g. "repeat that", "what was that")
+        if re.search(r"^(?:please\s+)?(?:repeat(?:\s+that|\s+it)?|say\s+that\s+again|what\s+was\s+that|what\s+did\s+you\s+say|pardon)", raw_text, re.IGNORECASE):
             return text
 
         antecedent = self.get_antecedent_app(active_window)
