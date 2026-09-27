@@ -12,6 +12,7 @@ from core.config import eva_config
 from core.context_memory import context_memory
 from core.dbus_mpris import DbusMediaControl
 from core.hyprland_ipc import HyprlandIPC
+from core.steam_indexer import SteamIndexer
 from core.system1_laya import LayaDecisionEngine
 from core.system2_agent import System2Agent
 from core.system_control import SystemControl
@@ -106,6 +107,7 @@ class CommandDispatcher:
         apps: Optional[AppIndexer] = None,
         system: Optional[SystemControl] = None,
         visual: Optional[VisualGrounding] = None,
+        steam: Optional[SteamIndexer] = None,
     ):
         self.hypr = hypr or HyprlandIPC()
         self.media = media or DbusMediaControl()
@@ -114,6 +116,7 @@ class CommandDispatcher:
         self.apps = apps or AppIndexer()
         self.system = system or SystemControl()
         self.visual = visual or VisualGrounding()
+        self.steam = steam or getattr(self.apps, "steam", None) or SteamIndexer()
 
     def _get_another_workspace(self, cur_ws: str) -> str:
         """Determine another active or available workspace to move a window to."""
@@ -913,11 +916,64 @@ class CommandDispatcher:
                 self._speak(msg, intent="HYPR_FOCUS", action=f"focus {target_app}")
                 result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 return result
+            else:
+                # If window is not open, launch the application
+                app_match = self.apps.find_app(target_app)
+                if app_match:
+                    launch_res = self.apps.launch(target_app)
+                    speech = f"Launching {app_match['name']}."
+                    context_memory.record(intent="APP_LAUNCH", action=f"launch {app_match['name']}", app=target_app)
+                    result.update(
+                        matched=True,
+                        intent="APP_LAUNCH",
+                        action=f"launch {app_match['name']}",
+                        success=launch_res.get("success", False),
+                        speech=speech,
+                    )
+                    self._speak(speech, intent="APP_LAUNCH", action=f"launch {app_match['name']}")
+                    result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+                    return result
+
+        # Steam Game Launching: "launch RocketLeague", "play Rocket League", "launch game Rocket League in steam"
+        m_game = re.search(
+            r"^(?:please\s+)?(?:play|launch|start|run)\s+(?:the\s+)?(?:game\s+)?([a-zA-Z0-9_\-\.\s]+?)(?:\s+(?:in|on|with|through)\s+steam)?(?:\s+window)?$",
+            text,
+            re.IGNORECASE,
+        )
+        if m_game:
+            candidate_game = m_game.group(1).strip()
+            steam_match = self.steam.find_game(candidate_game)
+            if steam_match:
+                game_name = steam_match["name"]
+                appid = steam_match["appid"]
+                if not execute:
+                    result.update(
+                        matched=True,
+                        intent="STEAM_LAUNCH",
+                        action=f"steam_launch {game_name}",
+                        success=True,
+                    )
+                    return result
+
+                launch_res = self.steam.launch_game(appid)
+                speech = f"Launching {game_name} on Steam."
+                context_memory.record(intent="STEAM_LAUNCH", action=f"steam_launch {game_name}", app=game_name)
+                result.update(
+                    matched=True,
+                    intent="STEAM_LAUNCH",
+                    action=f"steam_launch {game_name}",
+                    success=launch_res.get("success", False),
+                    speech=speech,
+                )
+                self._speak(speech, intent="STEAM_LAUNCH", action=f"steam_launch {game_name}")
+                result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+                return result
 
         # Smart App Focus or Launch: "open obsidian", "show me spotify", "see spotify"
         m_app = re.search(
-            r"\b(?:open|launch|start|run|show\s+me|show|see)\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)(?:\s+window)?\b",
+            r"\b(?:open|launch|start|run|show\s+me|show|see)\s+(?:the\s+)?([a-zA-Z0-9_\-\.\s]+?)(?:\s+window)?$",
             text,
+            re.IGNORECASE,
         )
         if m_app:
             candidate_app = m_app.group(1).strip()

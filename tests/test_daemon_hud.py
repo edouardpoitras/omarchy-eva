@@ -86,6 +86,25 @@ class TestEvaDaemon(unittest.TestCase):
         self.assertEqual(resp["status"], "ok")
         self.assertIn("running", resp["message"])
 
+    def test_idle_reset_timer(self):
+        """Verify _schedule_idle_reset transitions to idle and cancels prior timers."""
+        import time
+        self.daemon.set_state("executing", command="test command")
+        self.assertEqual(self.daemon.state, "executing")
+        self.daemon._schedule_idle_reset(0.05)
+        self.assertIsNotNone(self.daemon._idle_reset_timer)
+        time.sleep(0.1)
+        self.assertEqual(self.daemon.state, "idle")
+        self.assertIsNone(self.daemon._idle_reset_timer)
+
+    def test_rapid_commands_cancel_timer(self):
+        """Verify entering active state cancels pending idle reset timer."""
+        self.daemon._schedule_idle_reset(1.0)
+        self.assertIsNotNone(self.daemon._idle_reset_timer)
+        self.daemon.set_state("listening")
+        self.assertIsNone(self.daemon._idle_reset_timer)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -53,6 +53,20 @@ DOMAIN_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "aliases": ["apps", "application", "applications", "app", "programs", "launch", "software"],
         "schema_intents": ["HYPR_FOCUS", "APP_LAUNCH", "DIR_SHORTCUT"],
     },
+    "games": {
+        "title": "Steam Game Discovery & Execution",
+        "description": "Discover installed Steam games across all libraries, match titles with fuzzy/normalized pronunciation, and launch games directly via Steam protocol.",
+        "spoken": "For gaming, I can automatically discover installed Steam games across all your libraries and launch any title instantly, including compound actions like switching to Steam and starting a game.",
+        "examples": [
+            "switch to steam and launch RocketLeague",
+            "launch Rocket League in steam",
+            "play RocketLeague",
+            "launch game ARC Raiders",
+            "list steam games",
+        ],
+        "aliases": ["games", "game", "gaming", "steam", "steam game", "steam games", "play"],
+        "schema_intents": ["STEAM_LAUNCH", "COMPOUND_REFLEX"],
+    },
     "audio": {
         "title": "Media Playback & Audio Device Routing",
         "description": "Control MPRIS playback, adjust volume/mute, switch audio output sinks (headset, speakers, HDMI), and switch microphone inputs.",
@@ -261,6 +275,10 @@ class EvaCapabilitiesRegistry:
                     return d_key
 
         return None
+
+    def get_domain(self, domain_or_query: str) -> Optional[Dict[str, Any]]:
+        """Convenience alias for get_domain_details."""
+        return self.get_domain_details(domain_or_query)
 
     def get_domain_details(self, domain_or_query: str) -> Optional[Dict[str, Any]]:
         """Get detailed breakdown for a specific capability domain."""

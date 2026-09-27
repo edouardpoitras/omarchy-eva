@@ -247,4 +247,26 @@ PanelWindow {
       tick += 0.25
     }
   }
+
+  // Visual auto-dismiss watchdog: if executing, error, or alert persists, force dismiss
+  Timer {
+    id: visualAutoDismissTimer
+    interval: 3000
+    repeat: false
+    onTriggered: {
+      if (root.evaState !== "idle" && root.evaState !== "listening" && root.evaState !== "deliberating") {
+        root.evaState = "idle"
+      }
+    }
+  }
+
+  onEvaStateChanged: {
+    if (evaState === "executing" || evaState === "error" || evaState === "alert") {
+      visualAutoDismissTimer.interval = (evaState === "alert") ? 5000 : 3000
+      visualAutoDismissTimer.restart()
+    } else {
+      visualAutoDismissTimer.stop()
+    }
+  }
 }
+

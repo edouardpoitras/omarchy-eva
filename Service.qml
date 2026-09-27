@@ -42,6 +42,7 @@ Item {
     id: evaWatcher
     path: root.evaStatePath
     watchChanges: true
+    atomicWrites: true
     printErrors: false
 
     onLoaded: updateFromEva()
@@ -65,41 +66,32 @@ Item {
     } catch (e) {}
   }
 
-  // Watch Voxtype daemon state for fallback
-  FileView {
-    id: voxtypeWatcher
-    path: root.voxtypeStatePath
-    watchChanges: true
-    printErrors: false
-
-    onLoaded: updateFromVoxtype()
-    onFileChanged: reload()
-    onLoadFailed: {
-      if (root.evaState !== "idle" && !evaWatcher.exists) root.evaState = "idle"
+  // Active state watcher: ensure safety reset timer is always armed when not idle
+  onEvaStateChanged: {
+    if (evaState !== "idle") {
+      safetyIdleTimer.interval = (evaState === "deliberating") ? 8000 : 3500
+      safetyIdleTimer.restart()
+    } else {
+      safetyIdleTimer.stop()
+      root.lastCommand = ""
+      root.lastAction = ""
+      root.intent = ""
+      root.agentResponse = ""
     }
   }
 
-  function updateFromVoxtype() {
-    var raw = (voxtypeWatcher.text() || "").trim().toLowerCase()
-    if (raw === "recording") {
-      root.evaState = "listening"
-    } else if (raw === "transcribing") {
-      root.evaState = "transcribing"
-    } else if (raw === "idle") {
-      if (root.evaState === "transcribing" || root.evaState === "listening") {
-        root.evaState = "executing"
-      }
-    }
-  }
-
-  // Safety reset timer if state remains active without update
+  // Safety reset timer: guarantees HUD never gets stuck in executing or active state
   Timer {
     id: safetyIdleTimer
-    interval: 8000
+    interval: 3500
     repeat: false
     onTriggered: {
       if (root.evaState !== "idle") {
         root.evaState = "idle"
+        root.lastCommand = ""
+        root.lastAction = ""
+        root.intent = ""
+        root.agentResponse = ""
       }
     }
   }
@@ -108,6 +100,7 @@ Item {
   Process {
     id: triggerProcess
   }
+
 
   // Public action callable from BarWidget or keybindings
   function trigger() {

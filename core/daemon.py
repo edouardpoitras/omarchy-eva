@@ -43,6 +43,7 @@ class EvaDaemon:
         self.input = InputController()
 
         self._auto_stop_timer: Optional[threading.Timer] = None
+        self._idle_reset_timer: Optional[threading.Timer] = None
         self.awareness = AwarenessEngine(
             alert_callback=self.proactive_alert,
             query_agent_callback=self.system2.query if self.system2 else None,
@@ -69,6 +70,14 @@ class EvaDaemon:
     ):
         """Update system state, persist to state.json, and notify subscribers."""
         with self._lock:
+            if new_state in ("idle", "listening", "recording", "transcribing", "deliberating"):
+                if self._idle_reset_timer is not None:
+                    try:
+                        self._idle_reset_timer.cancel()
+                    except Exception:
+                        pass
+                    self._idle_reset_timer = None
+
             self.state = new_state
             if command is not None:
                 self.last_command = command
@@ -99,6 +108,26 @@ class EvaDaemon:
                 pass
 
             self._broadcast({"type": "state_change", **state_data})
+
+    def _schedule_idle_reset(self, delay_sec: float = 1.8):
+        """Schedule an automatic transition back to idle after delay_sec.
+        Cancels any existing pending reset timer to avoid race conditions."""
+        with self._lock:
+            if self._idle_reset_timer is not None:
+                try:
+                    self._idle_reset_timer.cancel()
+                except Exception:
+                    pass
+                self._idle_reset_timer = None
+
+            def _timer_callback():
+                with self._lock:
+                    self.set_state("idle")
+                    self._idle_reset_timer = None
+
+            self._idle_reset_timer = threading.Timer(delay_sec, _timer_callback)
+            self._idle_reset_timer.daemon = True
+            self._idle_reset_timer.start()
 
     def _broadcast(self, msg: dict):
         """Broadcast an event message to all connected clients."""
@@ -143,12 +172,20 @@ class EvaDaemon:
 
         # 3. Reset HUD state after message completes
         def _reset_alert():
-            time.sleep(5.5)
             with self._lock:
                 if self.state == "alert":
                     self.set_state("clarifying" if requires_clarification else "idle")
+                self._idle_reset_timer = None
 
-        threading.Thread(target=_reset_alert, daemon=True).start()
+        with self._lock:
+            if self._idle_reset_timer is not None:
+                try:
+                    self._idle_reset_timer.cancel()
+                except Exception:
+                    pass
+            self._idle_reset_timer = threading.Timer(5.5, _reset_alert)
+            self._idle_reset_timer.daemon = True
+            self._idle_reset_timer.start()
 
     def handle_request(self, req: dict) -> dict:
         """Handle incoming IPC JSON request."""
@@ -180,10 +217,7 @@ class EvaDaemon:
             elif not res.get("matched"):
                 self.sound.error()
 
-            def _reset_exec():
-                time.sleep(1.8)
-                self.set_state("idle")
-            threading.Thread(target=_reset_exec, daemon=True).start()
+            self._schedule_idle_reset(1.8)
 
             return {"status": "ok", "result": res}
 
@@ -206,10 +240,7 @@ class EvaDaemon:
             self.last_result = res
             self.set_state("executing", command=text, action="Spoke response", intent="AGENT_DELIBERATE", response=res.get("response"))
 
-            def _reset_agent():
-                time.sleep(2.0)
-                self.set_state("idle")
-            threading.Thread(target=_reset_agent, daemon=True).start()
+            self._schedule_idle_reset(2.0)
 
             return {"status": "ok", "result": res}
 
@@ -266,10 +297,7 @@ class EvaDaemon:
             self.last_result = res
             self.set_state("executing", command=text, action="Screen analyzed", intent="VISION_PERCEIVE", response=res.get("response"))
 
-            def _reset_vis():
-                time.sleep(2.0)
-                self.set_state("idle")
-            threading.Thread(target=_reset_vis, daemon=True).start()
+            self._schedule_idle_reset(2.0)
 
             return {"status": "ok", "result": res}
 
@@ -316,10 +344,7 @@ class EvaDaemon:
             else:
                 self.sound.error()
 
-            def _reset_click():
-                time.sleep(1.8)
-                self.set_state("idle")
-            threading.Thread(target=_reset_click, daemon=True).start()
+            self._schedule_idle_reset(1.8)
             return {"status": "ok", "result": res}
 
         elif action == "top_processes":
@@ -415,6 +440,8 @@ class EvaDaemon:
             if self._auto_stop_timer:
                 self._auto_stop_timer.cancel()
                 self._auto_stop_timer = None
+            if self.state not in ("listening", "recording") and not self.voxtype.is_recording():
+                return {"status": "ok", "state": self.state, "note": "not_recording"}
             return self._stop_and_dispatch()
 
         elif action == "record_toggle":
@@ -443,10 +470,7 @@ class EvaDaemon:
         if not text:
             self.sound.error()
             self.set_state("error", command="No speech detected")
-            def _reset_err():
-                time.sleep(1.2)
-                self.set_state("idle")
-            threading.Thread(target=_reset_err, daemon=True).start()
+            self._schedule_idle_reset(1.2)
             return {
                 "status": "warning",
                 "state": "idle",
@@ -480,10 +504,7 @@ class EvaDaemon:
                 "clarification_prompt": res.get("response"),
             }
 
-        def _reset_voice():
-            time.sleep(1.8)
-            self.set_state("idle")
-        threading.Thread(target=_reset_voice, daemon=True).start()
+        self._schedule_idle_reset(1.8)
         return {
             "status": "ok",
             "state": "idle",
@@ -570,6 +591,12 @@ class EvaDaemon:
             except Exception:
                 pass
             self._auto_stop_timer = None
+        if self._idle_reset_timer:
+            try:
+                self._idle_reset_timer.cancel()
+            except Exception:
+                pass
+            self._idle_reset_timer = None
         self.awareness.stop()
         if self._server_sock:
             try:

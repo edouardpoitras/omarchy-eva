@@ -6,6 +6,8 @@ import shlex
 import subprocess
 from typing import Any, Dict, List, Optional
 
+from core.steam_indexer import SteamIndexer
+
 
 class AppIndexer:
     """Discovers, indexes, and launches desktop applications installed on the system."""
@@ -35,8 +37,9 @@ class AppIndexer:
         "settings": ["omarchy-settings", "gnome-control-center", "systemsettings"],
     }
 
-    def __init__(self, search_paths: Optional[List[str]] = None):
+    def __init__(self, search_paths: Optional[List[str]] = None, steam: Optional[SteamIndexer] = None):
         self.search_paths = search_paths or self.DEFAULT_SEARCH_PATHS
+        self.steam = steam or SteamIndexer()
         self._apps: Dict[str, Dict[str, Any]] = {}
         self._alias_map: Dict[str, str] = {}
         self.refresh()
@@ -60,18 +63,55 @@ class AppIndexer:
                             if app_id not in apps:
                                 apps[app_id] = entry
 
+        # Integrate discovered Steam games
+        for game in self.steam.list_games():
+            appid = game["appid"]
+            app_id = f"steam_app_{appid}"
+            # Check if this steam game was already indexed via a .desktop file
+            already_indexed = any(
+                f"rungameid/{appid}" in a.get("clean_exec", "")
+                or f"rungameid/{appid}" in a.get("exec", "")
+                for a in apps.values()
+            )
+            if not already_indexed:
+                apps[app_id] = {
+                    "id": app_id,
+                    "name": game["name"],
+                    "path": game.get("manifest_path", ""),
+                    "exec": game["exec"],
+                    "clean_exec": game["exec"],
+                    "generic_name": "Game",
+                    "comment": f"Play {game['name']} on Steam",
+                    "icon": f"steam_icon_{appid}",
+                    "terminal": False,
+                    "no_display": False,
+                    "keywords": ["game", "steam", game.get("installdir", "")],
+                    "is_steam_game": True,
+                    "steam_appid": appid,
+                }
+
         # Build alias map
         for app_id, entry in apps.items():
             name = entry["name"].lower().strip()
             alias_map[name] = app_id
             alias_map[app_id.lower()] = app_id
 
-            # Add binary name from Exec
+            # Normalized alphanumeric name (e.g. "rocketleague" -> "Rocket League")
+            name_norm = re.sub(r"[^a-z0-9]", "", name)
+            if name_norm and name_norm not in alias_map:
+                alias_map[name_norm] = app_id
+
+            app_id_norm = re.sub(r"[^a-z0-9]", "", app_id.lower())
+            if app_id_norm and app_id_norm not in alias_map:
+                alias_map[app_id_norm] = app_id
+
+            # Add binary name from Exec (preserve 'steam' for the Steam client itself)
             exec_bin = entry["clean_exec"].split()[0].lower() if entry.get("clean_exec") else ""
             if exec_bin:
                 base_bin = os.path.basename(exec_bin)
                 if base_bin not in alias_map:
-                    alias_map[base_bin] = app_id
+                    if base_bin != "steam" or entry.get("id") in ("steam", "com.valvesoftware.Steam"):
+                        alias_map[base_bin] = app_id
 
             # Add keywords and generic names
             gen_name = entry.get("generic_name", "").lower().strip()
@@ -157,24 +197,57 @@ class AppIndexer:
         if q in self._alias_map:
             return self._apps[self._alias_map[q]]
 
-        # 2. Name contains query or query contains name
+        # 2. Normalized alphanumeric alias match (handles "rocketleague" -> "Rocket League")
+        q_norm = re.sub(r"[^a-z0-9]", "", q)
+        if q_norm and q_norm in self._alias_map:
+            return self._apps[self._alias_map[q_norm]]
+
+        # 3. Name contains query or query contains name
         for app_id, entry in self._apps.items():
             name_lower = entry["name"].lower()
             if q == name_lower or q in name_lower or name_lower in q:
                 return entry
 
-        # 3. Base desktop ID match (e.g. 'com.mitchellh.ghostty' matches 'ghostty')
-        for app_id, entry in self._apps.items():
-            if q in app_id.lower():
-                return entry
-
-        # 4. Partial keyword match
-        for app_id, entry in self._apps.items():
-            for kw in entry.get("keywords", []):
-                if q in kw.lower():
+        # 4. Normalized name match
+        if q_norm:
+            for app_id, entry in self._apps.items():
+                name_norm = re.sub(r"[^a-z0-9]", "", entry["name"].lower())
+                if q_norm == name_norm or q_norm in name_norm or name_norm in q_norm:
                     return entry
 
+        # 5. Base desktop ID match (e.g. 'com.mitchellh.ghostty' matches 'ghostty')
+        for app_id, entry in self._apps.items():
+            if q in app_id.lower() or (q_norm and q_norm in re.sub(r"[^a-z0-9]", "", app_id.lower())):
+                return entry
+
+        # 6. Partial keyword match
+        for app_id, entry in self._apps.items():
+            for kw in entry.get("keywords", []):
+                if q in kw.lower() or (q_norm and q_norm in re.sub(r"[^a-z0-9]", "", kw.lower())):
+                    return entry
+
+        # 7. Fallback to SteamIndexer directly
+        steam_game = self.steam.find_game(query)
+        if steam_game:
+            appid = steam_game["appid"]
+            return {
+                "id": f"steam_app_{appid}",
+                "name": steam_game["name"],
+                "path": steam_game.get("manifest_path", ""),
+                "exec": steam_game["exec"],
+                "clean_exec": steam_game["exec"],
+                "generic_name": "Game",
+                "comment": f"Play {steam_game['name']} on Steam",
+                "icon": f"steam_icon_{appid}",
+                "terminal": False,
+                "no_display": False,
+                "keywords": ["game", "steam", steam_game.get("installdir", "")],
+                "is_steam_game": True,
+                "steam_appid": appid,
+            }
+
         return None
+
 
     def launch(self, query: str) -> Dict[str, Any]:
         """Find and launch the application matching query."""
