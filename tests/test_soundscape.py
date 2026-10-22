@@ -2,9 +2,8 @@
 
 import os
 import unittest
+import wave
 from unittest.mock import MagicMock, patch
-
-import soundfile as sf
 
 from core.soundscape import SOUNDS_DIR, Soundscape, generate_default_earcons
 
@@ -24,9 +23,10 @@ class TestSoundscape(unittest.TestCase):
             self.assertGreater(os.path.getsize(p), 1000)
 
             # Validate WAV format and sample rate
-            info = sf.info(p)
-            self.assertEqual(info.samplerate, 48000)
-            self.assertGreater(info.duration, 0.05)
+            with wave.open(p, "rb") as wf:
+                self.assertEqual(wf.getframerate(), 48000)
+                duration = wf.getnframes() / float(wf.getframerate())
+                self.assertGreater(duration, 0.05)
 
     def test_play_non_blocking(self):
         with patch("subprocess.run") as mock_run:

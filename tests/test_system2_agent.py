@@ -32,10 +32,14 @@ class TestKokoroTTS(unittest.TestCase):
 
     def test_synthesize_mocked(self):
         # Test synthesis logic with mocked pipeline
-        import numpy as np
+        try:
+            import numpy as np
+            mock_audio = np.zeros(24000, dtype=np.float32)
+        except ImportError:
+            mock_audio = [0.0] * 24000
         mock_pipe = MagicMock()
         mock_result = MagicMock()
-        mock_result.audio = np.zeros(24000, dtype=np.float32)
+        mock_result.audio = mock_audio
         mock_pipe.return_value = [mock_result]
 
         with patch.object(self.tts, "_ensure_pipeline", return_value=mock_pipe):

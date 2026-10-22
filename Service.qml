@@ -69,7 +69,7 @@ Item {
   // Active state watcher: ensure safety reset timer is always armed when not idle
   onEvaStateChanged: {
     if (evaState !== "idle") {
-      safetyIdleTimer.interval = (evaState === "deliberating") ? 8000 : 3500
+      safetyIdleTimer.interval = (evaState === "deliberating" || evaState === "follow_up") ? 9500 : 3500
       safetyIdleTimer.restart()
     } else {
       safetyIdleTimer.stop()

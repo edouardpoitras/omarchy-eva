@@ -22,6 +22,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "hud_enabled": True,         # Show floating visual overlay on listening/executing
     "tray_enabled": True,        # Enable system tray StatusNotifierItem
     "default_agent": "gemini",   # Deliberative System 2 agent CLI
+    "wake_word_enabled": True,   # Continuous passive wake word listening ("Eva" / "Hey Eva")
+    "wake_word_sensitivity": 0.5,# Wake word detection sensitivity
+    "follow_up_mode": True,      # Open-mic trailing follow-up listening window after commands
+    "follow_up_timeout_sec": 8.0,# Seconds to wait for follow-up speech before returning to idle
+    "max_follow_up_turns": 4,    # Maximum consecutive follow-up command executions
+    "decision_engine": "clef-flash", # Pluggable local decision engine ("clef-flash", "clef", "laya")
+    "decision_local_only": True,     # Strict local offline execution, never use API/internet
+    "clef_local_path": "",           # Optional custom path to local Clef weights
 }
 
 # Intents whose actions are immediately visual/tactile and should not produce spoken confirmations in minimal mode
@@ -200,6 +208,8 @@ class EvaConfig:
             "EVA_IDENTITY",
             "EVA_CAPABILITIES",
             "REPEAT_STATEMENT",
+            "DISMISS_FOLLOW_UP",
+            "WAKE_WORD_SUMMON",
             "MEDIA_QUERY",
             "SYSTEM_TELEMETRY",
             "ESCALATE_GENERATIVE",

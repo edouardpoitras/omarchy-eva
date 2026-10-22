@@ -11,10 +11,10 @@ from core.dispatcher import CommandDispatcher
 from core.system_control import SystemControl
 
 MOCK_WPCTL_STATUS = """
-PipeWire 'pipewire-0' [1.6.8, eddie@eddie-desktop, cookie:4241650017]
+PipeWire 'pipewire-0' [1.6.8, user@omarchy-desktop, cookie:4241650017]
  └─ Clients:
-        32. WirePlumber                         [1.6.8, eddie@eddie-desktop, pid:1727]
-        33. pipewire                            [1.6.8, eddie@eddie-desktop, pid:1728]
+        32. WirePlumber                         [1.6.8, user@omarchy-desktop, pid:1727]
+        33. pipewire                            [1.6.8, user@omarchy-desktop, pid:1728]
 
 Audio
  ├─ Devices:

@@ -9,7 +9,10 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(REPO_ROOT, "models")
@@ -19,7 +22,9 @@ LABEL_MAP_PATH = os.path.join(MODELS_DIR, "label_map.json")
 CALIBRATION_PATH = os.path.join(MODELS_DIR, "calibration.json")
 
 
-def softmax(x: np.ndarray, temp: float = 1.0) -> np.ndarray:
+def softmax(x, temp: float = 1.0):
+    if np is None:
+        return x
     e_x = np.exp((x - np.max(x, axis=-1, keepdims=True)) / temp)
     return e_x / np.sum(e_x, axis=-1, keepdims=True)
 
@@ -50,7 +55,7 @@ class LayaDecisionEngine:
 
     def _load_engine(self):
         """Load ONNX session, tokenizer, label map, and calibration parameters."""
-        if not (os.path.exists(self.onnx_path) and os.path.exists(self.label_map_path)):
+        if np is None or not (os.path.exists(self.onnx_path) and os.path.exists(self.label_map_path)):
             self.is_ready = False
             return
 

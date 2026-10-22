@@ -17,6 +17,7 @@ from core.system2_agent import System2Agent
 from core.input_controller import InputController
 from core.soundscape import Soundscape
 from core.tts_kokoro import AVAILABLE_VOICES, KokoroTTS
+from core.passive_listener import PassiveListener
 from core.vision_capture import VisionCapture
 from core.voxtype_bridge import VoxtypeBridge
 
@@ -41,6 +42,13 @@ class EvaDaemon:
         self.voxtype = VoxtypeBridge()
         self.vision = VisionCapture()
         self.input = InputController()
+
+        self.passive_listener = PassiveListener(
+            on_wake_word=self._on_wake_word_detected,
+            on_speech_started=self._on_follow_up_speech_started,
+            on_command_audio=self._on_passive_command_audio,
+            on_follow_up_expired=self._on_follow_up_expired,
+        )
 
         self._auto_stop_timer: Optional[threading.Timer] = None
         self._idle_reset_timer: Optional[threading.Timer] = None
@@ -70,7 +78,7 @@ class EvaDaemon:
     ):
         """Update system state, persist to state.json, and notify subscribers."""
         with self._lock:
-            if new_state in ("idle", "listening", "recording", "transcribing", "deliberating"):
+            if new_state in ("idle", "listening", "recording", "transcribing", "deliberating", "follow_up"):
                 if self._idle_reset_timer is not None:
                     try:
                         self._idle_reset_timer.cancel()
@@ -240,6 +248,33 @@ class EvaDaemon:
             res = self.dispatcher.laya.predict(text)
             return {"status": "ok", "result": res}
 
+        elif action == "route":
+            text = req.get("text", "").strip()
+            if not text:
+                return {"status": "error", "error": "Empty text provided"}
+            res = self.dispatcher.route(text)
+            return {"status": "ok", "route": res}
+
+        elif action == "list_engines":
+            from core.decision.registry import decision_registry
+            return {
+                "status": "ok",
+                "active_engine": decision_registry.get_active_engine_name(),
+                "available_engines": decision_registry.list_engines(),
+            }
+
+        elif action == "set_engine":
+            name = req.get("engine", "").strip()
+            if not name:
+                return {"status": "error", "error": "No engine name specified"}
+            from core.decision.registry import decision_registry
+            if decision_registry.set_active_engine(name):
+                new_eng = decision_registry.get(name)
+                self.dispatcher.router.set_engine(new_eng)
+                eva_config.set("decision_engine", name)
+                return {"status": "ok", "active_engine": name}
+            return {"status": "error", "error": f"Unknown engine: {name}. Available: {decision_registry.list_engines()}"}
+
         elif action == "agent_prompt":
             text = req.get("text", "").strip()
             speak = req.get("speak", True)
@@ -290,6 +325,37 @@ class EvaDaemon:
                 return {"status": "error", "error": "Missing config key"}
             eva_config.set(key, value)
             return {"status": "ok", "key": key, "value": value, "config": eva_config.as_dict()}
+
+        elif action == "wake_word_status":
+            return {
+                "status": "ok",
+                "wake_word_enabled": bool(eva_config.get("wake_word_enabled", True)),
+                "available": self.passive_listener.is_available(),
+                "running": self.passive_listener.running,
+                "state": self.passive_listener.state,
+                "follow_up_mode": bool(eva_config.get("follow_up_mode", True)),
+                "follow_up_active": self.passive_listener.follow_up_active,
+                "is_call_active": self.passive_listener.is_call_active,
+            }
+
+        elif action == "wake_word_toggle":
+            curr = bool(eva_config.get("wake_word_enabled", True))
+            new_val = not curr
+            eva_config.set("wake_word_enabled", new_val)
+            if new_val and not self.passive_listener.running and self.passive_listener.is_available():
+                self.passive_listener.start()
+            elif not new_val and self.passive_listener.running:
+                self.passive_listener.stop()
+            return {"status": "ok", "wake_word_enabled": new_val}
+
+        elif action == "follow_up_toggle":
+            curr = bool(eva_config.get("follow_up_mode", True))
+            new_val = not curr
+            eva_config.set("follow_up_mode", new_val)
+            if not new_val:
+                self.passive_listener.reset_follow_up()
+            return {"status": "ok", "follow_up_mode": new_val}
+
 
         elif action == "capture_screen":
             mode = req.get("mode", "fullscreen")
@@ -504,6 +570,17 @@ class EvaDaemon:
         elif not res.get("matched"):
             self.sound.error()
 
+        # Check for conversational dismissal
+        if intent == "DISMISS_FOLLOW_UP":
+            self.passive_listener.reset_follow_up()
+            self._schedule_idle_reset(0.8)
+            return {
+                "status": "ok",
+                "state": "idle",
+                "transcription": text,
+                "result": res,
+            }
+
         # If System 2 requires clarification, transition to clarifying and rearm Voxtype
         if res.get("requires_clarification"):
             self.set_state("clarifying", command=text, response=res.get("response"))
@@ -516,6 +593,21 @@ class EvaDaemon:
                 "clarification_prompt": res.get("response"),
             }
 
+        if (
+            res.get("success")
+            and eva_config.get("follow_up_mode", True)
+            and intent not in ("ESCALATE_GENERATIVE", "DISMISS_FOLLOW_UP")
+            and self.passive_listener.running
+        ):
+            self.passive_listener.start_follow_up()
+            self.set_state("follow_up", command=text, action=action_name, intent=intent, confidence=confidence)
+            return {
+                "status": "ok",
+                "state": "follow_up",
+                "transcription": text,
+                "result": res,
+            }
+
         self._schedule_idle_reset(1.8)
         return {
             "status": "ok",
@@ -523,6 +615,57 @@ class EvaDaemon:
             "transcription": text,
             "result": res,
         }
+
+    def _on_wake_word_detected(self):
+        """Invoked when passive listener spots 'Eva' / 'Hey Eva'."""
+        self.sound.listening()
+        self.set_state("listening", command="")
+
+    def _on_follow_up_speech_started(self):
+        """Invoked when speech onset is detected during follow-up window."""
+        self.set_state("listening", command="Listening (follow-up)...")
+
+    def _on_passive_command_audio(self, wav_path: str):
+        """Invoked when passive listener completes recording command audio."""
+        self.set_state("transcribing")
+        text = self.voxtype.transcribe_file(wav_path)
+        if not text:
+            self.sound.error()
+            self.set_state("error", command="No speech detected")
+            self._schedule_idle_reset(1.2)
+            return
+
+        self.last_command = text
+        res = self.dispatcher.dispatch_text(text)
+        self.last_result = res
+        intent = res.get("intent", "")
+        action_name = res.get("action", "")
+        confidence = res.get("confidence", 1.0)
+
+        self.set_state("executing", command=text, action=action_name, intent=intent, confidence=confidence)
+
+        if res.get("success") and res.get("intent") != "ESCALATE_GENERATIVE":
+            self.sound.success()
+        elif not res.get("matched"):
+            self.sound.error()
+
+        # Check for conversational dismissal
+        if intent == "DISMISS_FOLLOW_UP":
+            self.passive_listener.reset_follow_up()
+            self._schedule_idle_reset(0.8)
+            return
+
+        # Trigger follow-up mode if enabled
+        if res.get("success") and eva_config.get("follow_up_mode", True) and intent != "ESCALATE_GENERATIVE":
+            self.passive_listener.start_follow_up()
+            self.set_state("follow_up", command=text, action=action_name, intent=intent, confidence=confidence)
+        else:
+            self._schedule_idle_reset(1.8)
+
+    def _on_follow_up_expired(self):
+        """Invoked when the follow-up window expires without speech."""
+        if self.state == "follow_up":
+            self.set_state("idle")
 
     def _client_handler(self, client_sock: socket.socket):
         """Worker thread per connected IPC client."""
@@ -584,6 +727,8 @@ class EvaDaemon:
 
         self.set_state("idle")
         self.awareness.start()
+        if eva_config.get("wake_word_enabled", True) and self.passive_listener.is_available():
+            self.passive_listener.start()
 
         def shutdown_handler(signum, frame):
             self.stop()
@@ -606,6 +751,7 @@ class EvaDaemon:
     def stop(self):
         """Stop daemon and cleanup resources."""
         self.running = False
+        self.passive_listener.stop()
         if self._auto_stop_timer:
             try:
                 self._auto_stop_timer.cancel()

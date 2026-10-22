@@ -1,0 +1,19 @@
+{
+  "name": "Eva",
+  "voice": "bf_emma",
+  "voice_speed": 1.0,
+  "verbosity": "minimal",
+  "sound_effects": true,
+  "earcon_volume": 0.25,
+  "hud_enabled": true,
+  "tray_enabled": true,
+  "default_agent": "gemini",
+  "wake_word_enabled": true,
+  "wake_word_sensitivity": 0.5,
+  "follow_up_mode": true,
+  "follow_up_timeout_sec": 8.0,
+  "max_follow_up_turns": 4,
+  "decision_engine": "clef-flash",
+  "decision_local_only": true,
+  "clef_local_path": ""
+}

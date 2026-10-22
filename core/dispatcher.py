@@ -13,6 +13,8 @@ from core.context_memory import context_memory
 from core.dbus_mpris import DbusMediaControl
 from core.hyprland_ipc import HyprlandIPC
 from core.steam_indexer import SteamIndexer
+from core.decision.registry import decision_registry
+from core.decision.router import HierarchicalRouter
 from core.system1_laya import LayaDecisionEngine
 from core.system2_agent import System2Agent
 from core.system_control import SystemControl
@@ -108,6 +110,7 @@ class CommandDispatcher:
         system: Optional[SystemControl] = None,
         visual: Optional[VisualGrounding] = None,
         steam: Optional[SteamIndexer] = None,
+        router: Optional[HierarchicalRouter] = None,
     ):
         self.hypr = hypr or HyprlandIPC()
         self.media = media or DbusMediaControl()
@@ -117,6 +120,14 @@ class CommandDispatcher:
         self.system = system or SystemControl()
         self.visual = visual or VisualGrounding()
         self.steam = steam or getattr(self.apps, "steam", None) or SteamIndexer()
+        self.router = router or HierarchicalRouter(
+            engine=decision_registry.get(eva_config.get("decision_engine", "clef-flash")),
+            hypr=self.hypr,
+            media=self.media,
+            apps=self.apps,
+            system=self.system,
+            visual=self.visual,
+        )
 
     def _get_another_workspace(self, cur_ws: str) -> str:
         """Determine another active or available workspace to move a window to."""
@@ -180,9 +191,28 @@ class CommandDispatcher:
         ):
             self.system2.tts.speak(text, block=False)
 
+    def route(self, raw_text: str) -> Dict[str, Any]:
+        """Inspect hierarchical routing decision and token extraction without executing."""
+        act_win = None
+        try:
+            act_win = self.hypr.get_active_window()
+        except Exception:
+            pass
+        context = context_memory.get_context_snapshot(act_win)
+        return self.router.route_and_execute(raw_text, context=context, execute=False)
+
     def dispatch_text(self, raw_text: str, execute: bool = True) -> Dict[str, Any]:
         """Parse raw speech transcription and execute matching reflex command (or compound sequence)."""
         t_start = time.perf_counter()
+
+        # 0. Strip leading wake phrases if present (e.g. "Eva, what time is it", "Hey Eva pause music")
+        stripped = re.sub(
+            r"^(?:(?:hey|ok|okay|yo|hi|hello)\s+)?eva[,\s]+",
+            "",
+            raw_text,
+            flags=re.IGNORECASE,
+        ).strip()
+        working_text = stripped if stripped else raw_text
 
         # Pronoun & Anaphora resolution against context memory & active window
         act_win = None
@@ -190,7 +220,7 @@ class CommandDispatcher:
             act_win = self.hypr.get_active_window()
         except Exception:
             pass
-        resolved_text = context_memory.resolve_anaphora(raw_text, active_window=act_win)
+        resolved_text = context_memory.resolve_anaphora(working_text, active_window=act_win)
 
         # 1. Check for compound command splitting (e.g. "open spotify and pause music")
         parts = split_compound_commands(resolved_text)
@@ -439,6 +469,139 @@ class CommandDispatcher:
                 success=True,
                 speech=speech,
                 response=speech,
+            )
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # ------------------------------------------------------------- 0e. Conversational Dismissal / Cancellation
+        dismiss_patterns = [
+            r"^(?:never\s+mind|nevermind|dismiss|cancel|stop\s+listening|go\s+to\s+sleep|goodbye|bye\s+eva|that(?:'s|\s+is)\s+all|stand\s+down)\b",
+        ]
+        if any(re.search(p, text) for p in dismiss_patterns):
+            if not execute:
+                result.update(matched=True, intent="DISMISS_FOLLOW_UP", action="dismiss_follow_up", success=True)
+                return result
+            speech = "Understood."
+            self._speak(speech, intent="DISMISS_FOLLOW_UP", action="dismiss_follow_up", is_query=True)
+            result.update(
+                matched=True,
+                intent="DISMISS_FOLLOW_UP",
+                action="dismiss_follow_up",
+                success=True,
+                speech=speech,
+                response=speech,
+            )
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # ------------------------------------------------------------- 0f. Wake Word Summon / Await Command
+        summon_patterns = [
+            r"^(?:eva|hey\s+eva|hi\s+eva|hello\s+eva|ok\s+eva|okay\s+eva)\??$",
+        ]
+        if any(re.search(p, text) for p in summon_patterns):
+            if not execute:
+                result.update(matched=True, intent="WAKE_WORD_SUMMON", action="await_command", success=True)
+                return result
+            speech = "I'm listening."
+            self._speak(speech, intent="WAKE_WORD_SUMMON", action="await_command", is_query=True)
+            result.update(
+                matched=True,
+                intent="WAKE_WORD_SUMMON",
+                action="await_command",
+                success=True,
+                speech=speech,
+                response=speech,
+            )
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        # ------------------------------------------------------------- 0g. Specialized Domain Routing (Spotify, Web, Terminal)
+        act_win = None
+        try:
+            act_win = self.hypr.get_active_window()
+        except Exception:
+            pass
+        ctx_snapshot = context_memory.get_context_snapshot(act_win)
+
+        # Evaluate Clef-Flash Router
+        route_eval = self.router.route_and_execute(raw_text, context=ctx_snapshot, execute=False)
+        domain = route_eval.get("domain")
+
+        # Check Spotify model routing
+        is_window_or_app_op = any(text.startswith(prefix) for prefix in [
+            "open ", "launch ", "where is ", "show me ", "move ", "focus ", "switch to ", "bring up "
+        ]) or "workspace" in text
+        is_steam_game = bool(self.steam and (tokens := route_eval.get("tokens")) and (
+            self.steam.find_game(tokens.get("track") or "")
+            or self.steam.find_game(tokens.get("query") or "")
+            or any(kw in text for kw in ["rocket league", "rocketleague", "steam", "game"])
+        ))
+
+        if (
+            domain == "spotify"
+            and not is_window_or_app_op
+            and not is_steam_game
+            and (tokens := route_eval.get("tokens"))
+            and (tokens.get("track") or tokens.get("artist") or tokens.get("album") or tokens.get("playlist") or "spotify" in text)
+        ):
+            if not execute:
+                result.update(matched=True, intent="SPOTIFY", action=route_eval.get("action"), tokens=tokens, router=route_eval, success=True)
+                return result
+            exec_res = self.router.domains["spotify"].execute(raw_text, context=ctx_snapshot, dry_run=False)
+            speech = exec_res.get("speech")
+            if speech:
+                self._speak(speech, intent="SPOTIFY", action=exec_res.get("action"))
+            context_memory.record(intent="SPOTIFY", action=exec_res.get("action"), app="spotify", statement=speech)
+            result.update(
+                matched=True,
+                intent="SPOTIFY",
+                action=exec_res.get("action"),
+                success=exec_res.get("success", False),
+                speech=speech,
+                tokens=tokens,
+                router=route_eval,
+            )
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if domain == "web_browser" and (route_eval.get("tokens", {}).get("url") or any(kw in text for kw in ["search google for", "search the web for", "google for", "open http", "open www."])):
+            if not execute:
+                result.update(matched=True, intent="WEB_BROWSER", action=route_eval.get("action"), tokens=route_eval.get("tokens"), router=route_eval, success=True)
+                return result
+            exec_res = self.router.domains["web_browser"].execute(raw_text, context=ctx_snapshot, dry_run=False)
+            speech = exec_res.get("speech")
+            if speech:
+                self._speak(speech, intent="WEB_BROWSER", action=exec_res.get("action"))
+            context_memory.record(intent="WEB_BROWSER", action=exec_res.get("action"), app="browser", statement=speech)
+            result.update(
+                matched=True,
+                intent="WEB_BROWSER",
+                action=exec_res.get("action"),
+                success=exec_res.get("success", False),
+                speech=speech,
+                tokens=exec_res.get("tokens"),
+                router=route_eval,
+            )
+            result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
+            return result
+
+        if domain == "terminal" and any(kw in text for kw in ["run in terminal", "execute in terminal", "in bash", "in terminal"]):
+            if not execute:
+                result.update(matched=True, intent="TERMINAL_EXEC", action=route_eval.get("action"), tokens=route_eval.get("tokens"), router=route_eval, success=True)
+                return result
+            exec_res = self.router.domains["terminal"].execute(raw_text, context=ctx_snapshot, dry_run=False)
+            speech = exec_res.get("speech")
+            if speech:
+                self._speak(speech, intent="TERMINAL_EXEC", action=exec_res.get("action"))
+            context_memory.record(intent="TERMINAL_EXEC", action=exec_res.get("action"), app="terminal", statement=speech)
+            result.update(
+                matched=True,
+                intent="TERMINAL_EXEC",
+                action=exec_res.get("action"),
+                success=exec_res.get("success", False),
+                speech=speech,
+                tokens=exec_res.get("tokens"),
+                router=route_eval,
             )
             result["latency_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
             return result

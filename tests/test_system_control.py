@@ -34,7 +34,7 @@ ps               0.1  0.0
     def test_close_app_hyprland(self, mock_run):
         """Test closing app by matching Hyprland client title/class."""
         mock_clients = """[
-            {"address": "0x123456", "class": "ghostty", "title": "eddie@omarchy:~", "initialClass": "com.mitchellh.ghostty"},
+            {"address": "0x123456", "class": "ghostty", "title": "user@omarchy:~", "initialClass": "com.mitchellh.ghostty"},
             {"address": "0x789abc", "class": "firefox", "title": "Mozilla Firefox", "initialClass": "firefox"}
         ]"""
         mock_run.side_effect = [
@@ -85,11 +85,17 @@ ps               0.1  0.0
         self.assertTrue(res["success"])
         self.assertIn("The time is", res["speech"])
 
-    def test_local_ip(self):
+    @patch("socket.socket")
+    def test_local_ip(self, mock_socket_cls):
         """Test reading local network IP address."""
+        mock_sock = MagicMock()
+        mock_sock.getsockname.return_value = ("192.168.1.100", 54321)
+        mock_socket_cls.return_value = mock_sock
+
         res = self.sys.get_local_ip()
         self.assertTrue(res["success"])
-        self.assertTrue(len(res["ip"].split(".")) == 4)
+        self.assertEqual(res["ip"], "192.168.1.100")
+        self.assertIn("192.168.1.100", res["speech"])
 
     @patch("subprocess.run")
     def test_read_clipboard(self, mock_run):

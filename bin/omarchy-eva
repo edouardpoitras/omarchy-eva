@@ -214,6 +214,77 @@ def _print_classification(text: str, res: dict, source: str = ""):
             print(f"     - {intent:<20} {p * 100:5.1f}% |{bar}")
 
 
+def cmd_route(args: list[str]):
+    """Evaluate hierarchical System 1 routing and token extraction."""
+    text = " ".join(args).strip()
+    if not text:
+        print("Usage: omarchy-eva route <command text>")
+        sys.exit(1)
+
+    # 1. Query daemon if active
+    resp = send_ipc("route", {"text": text}, timeout=3.0)
+    if resp and resp.get("status") == "ok":
+        _print_route(text, resp["route"], source="Daemon (Warm)")
+        return
+
+    # 2. In-process fallback
+    from core.dispatcher import CommandDispatcher
+    dispatcher = CommandDispatcher()
+    res = dispatcher.route(text)
+    _print_route(text, res, source="In-Process (Local Clef)")
+
+
+def _print_route(text: str, res: dict, source: str = ""):
+    print(f"🧭 Hierarchical System 1 Route [{source}]:")
+    print(f"   Input:             \"{text}\"")
+    print(f"   Target Domain:     {res.get('domain', 'UNKNOWN')}")
+    print(f"   Domain Action:     {res.get('action', 'N/A')}")
+    conf = res.get('router_confidence', res.get('confidence', 0.0))
+    print(f"   Router Confidence: {conf * 100:.1f}%")
+    print(f"   Tokens Extracted:  {res.get('tokens', {})}")
+    print(f"   Escalate System 2: {res.get('escalate', False)}")
+    lat = res.get('total_latency_ms', res.get('latency_ms', 0))
+    print(f"   Total Latency:     {lat} ms")
+
+
+def cmd_models(args: list[str]):
+    """List available decision models and active configuration."""
+    resp = send_ipc("list_engines")
+    if resp and resp.get("status") == "ok":
+        active = resp.get("active_engine")
+        available = resp.get("available_engines", [])
+    else:
+        from core.decision.registry import decision_registry
+        active = decision_registry.get_active_engine_name()
+        available = decision_registry.list_engines()
+
+    print("🧠 Eva Decision Models (System 1):")
+    print(f"   Active Engine: {active} (Strictly Local)")
+    print("   Available Engines:")
+    for eng in available:
+        marker = "👉 [ACTIVE]" if eng == active else "  "
+        print(f"     {marker} {eng:<15}")
+
+
+def cmd_set_engine(args: list[str]):
+    """Switch active decision model."""
+    if not args:
+        print("Usage: omarchy-eva set-engine <clef-flash|clef|laya>")
+        sys.exit(1)
+    name = args[0].strip().lower()
+    resp = send_ipc("set_engine", {"engine": name})
+    if resp and resp.get("status") == "ok":
+        print(f"✅ Switched active decision engine to: {name}")
+    else:
+        from core.decision.registry import decision_registry
+        from core.config import eva_config
+        if decision_registry.set_active_engine(name):
+            eva_config.set("decision_engine", name)
+            print(f"✅ Switched active decision engine to: {name} (In-Process)")
+        else:
+            print(f"❌ Unknown engine: {name}. Available: {decision_registry.list_engines()}")
+
+
 def cmd_ask(args: list[str]):
     """Send complex or generative question to System 2 Agent with spoken reply."""
     text = " ".join(args).strip()
@@ -929,6 +1000,81 @@ def cmd_repeat():
     print(f"🗣️  Repeated: \"{stmt}\"")
 
 
+def cmd_wake_word(args: list):
+    """Inspect or control wake word passive listening."""
+    from core.config import eva_config
+    if not args or args[0] in ("status", "info"):
+        resp = send_ipc("wake_word_status")
+        if not resp:
+            print("Eva daemon is not active. Start daemon to use wake word.")
+            return
+        enabled = resp.get("wake_word_enabled", False)
+        avail = resp.get("available", False)
+        running = resp.get("running", False)
+        state = resp.get("state", "unknown")
+        call_active = resp.get("is_call_active", False)
+        print(f"Wake Word ('Eva' / 'Hey Eva'): {'Enabled' if enabled else 'Disabled'}")
+        print(f"KWS Model Available        : {'Yes' if avail else 'No (missing ~/.local/share/eva/models/kws)'}")
+        print(f"Passive Audio Stream       : {'Active' if running else 'Inactive'}")
+        print(f"Listener State             : {state}")
+        if call_active:
+            print("⚠️  VoIP Call In Progress  : Wake word paused for call privacy")
+    elif args[0] in ("on", "enable", "start"):
+        resp = send_ipc("set_config", {"key": "wake_word_enabled", "value": True})
+        send_ipc("wake_word_toggle") if not send_ipc("wake_word_status", {}).get("running") else None
+        eva_config.set("wake_word_enabled", True)
+        print("✅ Passive wake word listening enabled ('Eva' / 'Hey Eva').")
+    elif args[0] in ("off", "disable", "stop"):
+        send_ipc("set_config", {"key": "wake_word_enabled", "value": False})
+        eva_config.set("wake_word_enabled", False)
+        print("⏸️  Passive wake word listening disabled.")
+    elif args[0] in ("toggle",):
+        resp = send_ipc("wake_word_toggle")
+        if resp and "wake_word_enabled" in resp:
+            val = resp["wake_word_enabled"]
+            print(f"Wake word listening is now {'Enabled' if val else 'Disabled'}.")
+        else:
+            curr = bool(eva_config.get("wake_word_enabled", True))
+            eva_config.set("wake_word_enabled", not curr)
+            print(f"Wake word listening set to {not curr}.")
+    else:
+        print("Usage: omarchy-eva wake-word [status|on|off|toggle]")
+
+
+def cmd_follow_up(args: list):
+    """Inspect or control conversational follow-up mode."""
+    from core.config import eva_config
+    if not args or args[0] in ("status", "info"):
+        resp = send_ipc("wake_word_status")
+        if resp:
+            fm = resp.get("follow_up_mode", False)
+            active = resp.get("follow_up_active", False)
+            print(f"Follow-Up Mode   : {'Enabled' if fm else 'Disabled'}")
+            print(f"Currently Active : {'Yes (listening for follow-up speech)' if active else 'No'}")
+        else:
+            fm = bool(eva_config.get("follow_up_mode", True))
+            print(f"Follow-Up Mode: {'Enabled' if fm else 'Disabled'} (daemon offline)")
+    elif args[0] in ("on", "enable"):
+        send_ipc("set_config", {"key": "follow_up_mode", "value": True})
+        eva_config.set("follow_up_mode", True)
+        print("✅ Follow-up mode enabled (8-second open mic window after commands).")
+    elif args[0] in ("off", "disable"):
+        send_ipc("set_config", {"key": "follow_up_mode", "value": False})
+        eva_config.set("follow_up_mode", False)
+        print("⏸️  Follow-up mode disabled.")
+    elif args[0] in ("toggle",):
+        resp = send_ipc("follow_up_toggle")
+        if resp and "follow_up_mode" in resp:
+            val = resp["follow_up_mode"]
+            print(f"Follow-up mode is now {'Enabled' if val else 'Disabled'}.")
+        else:
+            curr = bool(eva_config.get("follow_up_mode", True))
+            eva_config.set("follow_up_mode", not curr)
+            print(f"Follow-up mode set to {not curr}.")
+    else:
+        print("Usage: omarchy-eva follow-up [status|on|off|toggle]")
+
+
 def print_help():
     print("""Omarchy Eva Voice Automation CLI
 
@@ -938,12 +1084,17 @@ Usage:
   omarchy-eva record-stop           Stop voice capture & execute (push-to-talk release)
   omarchy-eva exec <command...>     Directly execute command text
   omarchy-eva repeat                Repeat the last statement or output spoken by Eva
+  omarchy-eva wake-word [on|off]    Control hands-free passive wake word detection ("Eva")
+  omarchy-eva follow-up [on|off]    Control 8-second conversational follow-up window
   omarchy-eva ask <prompt...>       Deliberative System 2 reasoning with spoken reply
   omarchy-eva see [prompt...]       Inspect screen with vision agent and speak response
   omarchy-eva speak <text...>       Synthesize & speak via Kokoro-82M neural TTS
   omarchy-eva voices                List available Kokoro voices
   omarchy-eva sound [name]          Play acoustic earcon (listening, success, deliberate, error)
   omarchy-eva hud                   Demonstrate floating Arc-Reactor HUD overlay
+  omarchy-eva route <command...>    Evaluate hierarchical System 1 routing & token extraction
+  omarchy-eva models                List available decision models and active local engine
+  omarchy-eva set-engine <name>     Switch active decision model (clef-flash, clef, laya)
   omarchy-eva classify <text...>    Evaluate Laya decision model & calibrated confidence
   omarchy-eva status                Show daemon status
 
@@ -998,6 +1149,10 @@ def main():
         cmd_exec(sys.argv[2:])
     elif cmd in ("repeat", "again", "say-again"):
         cmd_repeat()
+    elif cmd in ("wake-word", "wakeword", "wake"):
+        cmd_wake_word(sys.argv[2:])
+    elif cmd in ("follow-up", "followup"):
+        cmd_follow_up(sys.argv[2:])
     elif cmd in ("ask", "agent", "query"):
         cmd_ask(sys.argv[2:])
     elif cmd in ("see", "vision", "look"):
@@ -1048,6 +1203,12 @@ def main():
         cmd_voices()
     elif cmd == "classify":
         cmd_classify(sys.argv[2:])
+    elif cmd in ("route", "router"):
+        cmd_route(sys.argv[2:])
+    elif cmd in ("models", "engines"):
+        cmd_models(sys.argv[2:])
+    elif cmd in ("set-engine", "set-model"):
+        cmd_set_engine(sys.argv[2:])
     elif cmd in ("info", "identity", "whoami"):
         cmd_info()
     elif cmd in ("capabilities", "caps", "features"):

@@ -1,6 +1,71 @@
-**/__pycache__/
-*.onnx
-*.data
-.cache/
-.venv/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 
+# C extensions
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments & local state
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Large ML models & binary weights (>100MB)
+*.onnx
+*.onnx.data
+*.data
+*.bin
+*.safetensors
+models/*.onnx
+models/*.data
+
+# Temporary runtime screen captures & IPC artifacts
+assets/captures/*
+!assets/captures/.gitkeep
+/dev/shm/eva_*
+*.tmp
+
+# Editor & OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

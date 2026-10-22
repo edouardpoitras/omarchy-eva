@@ -9,8 +9,6 @@ import subprocess
 import threading
 from typing import Optional
 
-import numpy as np
-
 from core.config import eva_config
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,9 +16,22 @@ SOUNDS_DIR = os.path.join(REPO_ROOT, "assets", "sounds")
 os.makedirs(SOUNDS_DIR, exist_ok=True)
 
 
-def generate_default_earcons(overwrite: bool = True):
+def generate_default_earcons(overwrite: bool = False):
     """Synthesize high-fidelity 48kHz audio earcons with soft, elegant amplitude."""
-    import soundfile as sf
+    listening_path = os.path.join(SOUNDS_DIR, "listening.wav")
+    success_path = os.path.join(SOUNDS_DIR, "success.wav")
+    deliberate_path = os.path.join(SOUNDS_DIR, "deliberate.wav")
+    error_path = os.path.join(SOUNDS_DIR, "error.wav")
+
+    if not overwrite and all(os.path.exists(p) for p in [listening_path, success_path, deliberate_path, error_path]):
+        return
+
+    try:
+        import numpy as np
+        import soundfile as sf
+    except ImportError:
+        return
+
     sr = 48000
 
     # 1. Listening: Ascending dual-tone soft chime (523Hz C5 -> 784Hz G5)
@@ -76,7 +87,7 @@ class Soundscape:
 
     def __init__(self, enabled: bool = True):
         self.enabled = enabled
-        generate_default_earcons(overwrite=True)
+        generate_default_earcons(overwrite=False)
         self.player_bin = "pw-play" if subprocess.run(["which", "pw-play"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0 else "aplay"
 
     def play(self, name: str, volume: Optional[float] = None):

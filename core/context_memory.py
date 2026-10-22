@@ -17,8 +17,10 @@ from typing import Any, Dict, Optional, Tuple, Union
 class ContextMemory:
     """Thread-safe context memory tracking recent interactions and window states."""
 
-    def __init__(self, ttl_seconds: float = 180.0):
+    def __init__(self, ttl_seconds: float = 180.0, max_history: int = 10):
         self.ttl_seconds = ttl_seconds
+        self.max_history = max_history
+        self.history: list[Dict[str, Any]] = []
         self.last_app: Optional[str] = None
         self.last_workspace: Optional[Union[int, str]] = None
         self.last_window_class: Optional[str] = None
@@ -29,6 +31,37 @@ class ContextMemory:
         self.last_statement: Optional[str] = None
         self.last_statement_timestamp: float = 0.0
         self.last_timestamp: float = 0.0
+
+    def record_turn(
+        self,
+        input_text: str,
+        domain: str,
+        action: str,
+        tokens: Optional[Dict[str, Any]] = None,
+        success: bool = True,
+    ):
+        """Append a completed interaction turn to command history."""
+        entry = {
+            "input": input_text,
+            "domain": domain,
+            "action": action,
+            "tokens": tokens or {},
+            "success": success,
+            "timestamp": time.time(),
+        }
+        self.history.append(entry)
+        if len(self.history) > self.max_history:
+            self.history.pop(0)
+
+    def get_context_snapshot(self, active_window: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Compile a dictionary of active context for System 1 decision models."""
+        return {
+            "command_history": list(self.history),
+            "active_app": self.get_antecedent_app(active_window),
+            "last_workspace": self.last_workspace,
+            "last_intent": self.last_intent,
+            "last_action": self.last_action,
+        }
 
     def record_statement(self, statement: str):
         """Record the last spoken statement or substantive output."""
@@ -72,6 +105,14 @@ class ContextMemory:
             self.last_window_address = window_address
         if statement is not None and intent != "REPEAT_STATEMENT":
             self.record_statement(statement)
+        if intent is not None and action is not None:
+            self.record_turn(
+                input_text=statement or action,
+                domain=intent.lower(),
+                action=action,
+                tokens={"app": self.last_app, "workspace": self.last_workspace},
+                success=True,
+            )
 
     def is_valid(self) -> bool:
         """Check if memory has not expired."""

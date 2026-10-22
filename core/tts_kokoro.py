@@ -11,7 +11,10 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 from core.config import eva_config
 
@@ -102,7 +105,7 @@ class KokoroTTS:
         text: str,
         voice: Optional[str] = None,
         speed: Optional[float] = None,
-    ) -> Tuple[Optional[np.ndarray], float]:
+    ) -> Tuple[Optional[Any], float]:
         """Synthesize text into a float32 audio waveform.
         
         Returns:
@@ -133,7 +136,12 @@ class KokoroTTS:
             if not chunks:
                 return None, 0.0
 
-            audio = np.concatenate(chunks)
+            if len(chunks) == 1:
+                audio = chunks[0]
+            elif np is not None:
+                audio = np.concatenate(chunks)
+            else:
+                audio = chunks[0]
             latency_ms = round((time.perf_counter() - t0) * 1000, 2)
             return audio, latency_ms
         except Exception as e:

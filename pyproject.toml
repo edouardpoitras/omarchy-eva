@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omarchy-eva"
+version = "0.1.0"
+description = "Real-time, voice-driven desktop automation suite and reflex engine for Omarchy Linux and Hyprland"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Edouard Poitras", email = "edouardpoitras@gmail.com" }
+]
+keywords = [
+    "omarchy",
+    "hyprland",
+    "voice-control",
+    "desktop-automation",
+    "wayland",
+    "speech-recognition",
+    "text-to-speech",
+    "reflex-engine",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Desktop Environment",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "numpy>=1.24.0",
+    "onnxruntime>=1.16.0",
+    "transformers>=4.36.0",
+]
+audio = [
+    "numpy>=1.24.0",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.1",
+    "kokoro>=0.9.4",
+]
+kws = [
+    "numpy>=1.24.0",
+    "sherpa-onnx>=1.10.0",
+    "sounddevice>=0.4.6",
+]
+training = [
+    "torch>=2.0.0",
+    "transformers>=4.36.0",
+    "scipy>=1.10.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+]
+all = [
+    "numpy>=1.24.0",
+    "onnxruntime>=1.16.0",
+    "transformers>=4.36.0",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.1",
+    "kokoro>=0.9.4",
+    "sherpa-onnx>=1.10.0",
+    "pyyaml>=6.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+omarchy-eva = "core.cli:main"
+omarchy-eva-daemon = "core.daemon:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "training*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

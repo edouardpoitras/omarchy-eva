@@ -122,3 +122,34 @@ class VoxtypeBridge:
             time.sleep(poll_interval)
 
         return None
+
+    def transcribe_file(self, wav_path: str, timeout_sec: float = 6.0) -> Optional[str]:
+        """Transcribe an audio file using voxtype transcribe."""
+        if not self.has_voxtype or not os.path.exists(wav_path):
+            return None
+
+        try:
+            res = subprocess.run(
+                ["voxtype", "transcribe", wav_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+                check=False,
+            )
+            if res.returncode != 0:
+                return None
+
+            lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+            clean = []
+            for l in lines:
+                if (
+                    l.startswith("Loading audio file:")
+                    or l.startswith("Audio format:")
+                    or l.startswith("Processing")
+                ):
+                    continue
+                clean.append(l)
+            return clean[-1] if clean else None
+        except Exception:
+            return None
+

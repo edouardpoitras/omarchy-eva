@@ -17,7 +17,7 @@ PanelWindow {
 
   // Status Theme Colors
   readonly property color stateColor: {
-    if (evaState === "listening" || evaState === "recording") return "#00f0ff"    // Arc-Reactor Cyan
+    if (evaState === "listening" || evaState === "recording" || evaState === "follow_up") return "#00f0ff"    // Arc-Reactor Cyan
     if (evaState === "transcribing") return "#ffaa00" // Amber
     if (evaState === "deliberating") return "#b366ff" // Purple Resonance
     if (evaState === "clarifying") return "#00c3ff"   // Blue Dialog
@@ -150,6 +150,7 @@ PanelWindow {
           Text {
             text: {
               if (root.evaState === "listening" || root.evaState === "recording") return "EVA // LISTENING"
+              if (root.evaState === "follow_up") return "EVA // AWAITING FOLLOW-UP"
               if (root.evaState === "transcribing") return "EVA // TRANSCRIBING"
               if (root.evaState === "deliberating") return "EVA // DELIBERATING"
               if (root.evaState === "clarifying") return "EVA // CLARIFYING"
@@ -193,6 +194,7 @@ PanelWindow {
           elide: Text.ElideRight
           text: {
             if (root.evaState === "listening" || root.evaState === "recording") return "Listening to speech..."
+            if (root.evaState === "follow_up") return "Listening for follow-up (or say 'never mind')..."
             if (root.evaState === "transcribing") return "Analyzing audio waveform..."
             if (root.evaState === "deliberating") return root.transcription || "Synthesizing answer..."
             if (root.evaState === "alert") return root.lastCommand || "System warning detected"
@@ -254,7 +256,7 @@ PanelWindow {
     interval: 3000
     repeat: false
     onTriggered: {
-      if (root.evaState !== "idle" && root.evaState !== "listening" && root.evaState !== "deliberating") {
+      if (root.evaState !== "idle" && root.evaState !== "listening" && root.evaState !== "deliberating" && root.evaState !== "follow_up") {
         root.evaState = "idle"
       }
     }
